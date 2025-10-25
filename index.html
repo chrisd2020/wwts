@@ -57,8 +57,8 @@
       /* New Label Container FIX: Position relative to the progressWrap's position */
       #markerLabels {
         position: absolute;
-        /* FIX: Position the labels container just above progressWrap */
-        top: -45px; /* Aligns to where the progressWrap margin starts */
+        /* PULL DOWN labels container to ensure visibility */
+        top: -40px;
         left: 20px;
         right: 20px;
         height: 40px;
@@ -74,7 +74,6 @@
         overflow: visible;
         border: 1px solid rgba(255, 255, 255, 0.1);
         display: none;
-        /* Margin to reserve space for the labels container above it */
         margin-top: 45px;
       }
       #bar {
@@ -132,10 +131,9 @@
       .markerLabel {
         position: absolute;
         transform: translateX(-50%);
-        /* FIX: Add background and slight padding for readability */
-        background: #071020; /* Dark background to cover other elements */
+        background: #071020;
         border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 2px 4px; /* Reduced padding slightly */
+        padding: 2px 4px;
         border-radius: 4px;
         font-size: 12px;
         color: #dff8fb;
@@ -818,20 +816,34 @@
         }
         const duration = state.duration; // ms
 
+        // --- ZOOM FACTOR IMPLEMENTATION ---
+        // The bar will only display the first 25% of the song.
+        const ZOOM_FACTOR = 0.25;
+        const MAX_DURATION_MS = duration * ZOOM_FACTOR;
+        // --- END ZOOM FACTOR ---
+
+        // Filter out buzzes that occur after the zoom window
+        let visibleBuzzes = buzzes.filter((b) => b.time_ms <= MAX_DURATION_MS);
+
+        if (visibleBuzzes.length === 0 && buzzes.length > 0) {
+          alert(
+            `Note: All ${buzzes.length} buzzes occurred after the ${
+              ZOOM_FACTOR * 100
+            }% mark and won't be visible on the zoomed bar.`
+          );
+        }
+
         // Sort buzzes to ensure we process them in time order
-        buzzes.sort((a, b) => a.time_ms - b.time_ms);
+        visibleBuzzes.sort((a, b) => a.time_ms - b.time_ms);
 
-        // --- HORIZONTAL STAGGERING LOGIC ---
-        // This array will hold the [left_position_in_pixels, required_right_edge_in_pixels]
-        const placedLabels = [];
-        const MAX_WIDTH_PX =
-          document.getElementById("markerLabels").offsetWidth;
-        const SAFETY_PADDING = 8; // Pixel space between labels
-        const TOP_POSITION = 5; // Fixed vertical position for all labels
-        // --- END HORIZONTAL STAGGERING LOGIC ---
+        // --- SIMPLE STAGGERING LOGIC ---
+        const LEVEL_1_TOP = 2; // Upper line
+        const LEVEL_2_TOP = 18; // Lower line (16px difference)
+        // --- END SIMPLE STAGGERING LOGIC ---
 
-        buzzes.forEach((b, index) => {
-          const pct = duration ? (b.time_ms / duration) * 100 : 0;
+        visibleBuzzes.forEach((b, index) => {
+          // All calculations must use MAX_DURATION_MS as the denominator (100%)
+          const pct = (b.time_ms / MAX_DURATION_MS) * 100;
           const markerLeft = pct + "%";
 
           // 1. CREATE MARKER (The line in the progress bar)
@@ -847,61 +859,23 @@
           // 2. CREATE LABEL (The name above the bar)
           const labelEl = document.createElement("div");
           labelEl.className = "markerLabel";
+
+          // Use the index to alternate vertical level
+          const adjustedTop = index % 2 === 0 ? LEVEL_1_TOP : LEVEL_2_TOP;
+
           labelEl.id = `label-${index}`;
+          labelEl.style.left = markerLeft; // Position horizontally
+          labelEl.style.top = adjustedTop + "px"; // Position vertically
           labelEl.innerHTML = `${escapeHtml(b.name)}<br>${(
             b.time_ms / 1000
           ).toFixed(2)}s`;
 
-          // --- HORIZONTAL STAGGERING IMPLEMENTATION ---
-          // Must calculate the exact pixel position and width of the label
-          // We'll place it first, then check its bounds
-          labelEl.style.left = markerLeft;
-          labelEl.style.top = TOP_POSITION + "px";
-          markerLabels.appendChild(labelEl); // Must be added to DOM to measure
-
-          let actualLabelWidth = labelEl.offsetWidth;
-          let actualLeftPx = labelEl.offsetLeft;
-
-          let newLabelLeftPx = actualLeftPx;
-          let newLabelRightPx = actualLeftPx + actualLabelWidth;
-
-          // Check against previously placed labels
-          for (let i = placedLabels.length - 1; i >= 0; i--) {
-            const [prevLeftPx, prevRightPx] = placedLabels[i];
-
-            // If the current label overlaps the previous one
-            if (newLabelLeftPx < prevRightPx) {
-              // Shift the current label to the right
-              newLabelLeftPx = prevRightPx + SAFETY_PADDING;
-              newLabelRightPx = newLabelLeftPx + actualLabelWidth;
-
-              // If shifting right causes it to jump too far, stop checking previous labels
-              if (newLabelRightPx > MAX_WIDTH_PX) {
-                // If shifting right pushes it off the screen, try shifting left instead
-                newLabelLeftPx = Math.max(
-                  0,
-                  actualLeftPx - (prevRightPx - newLabelLeftPx) - SAFETY_PADDING
-                );
-                newLabelRightPx = newLabelLeftPx + actualLabelWidth;
-                break;
-              }
-            }
-          }
-
-          // Update the label's horizontal position (using a fixed top position)
-          // We must translate the new pixel position back to percentage for the `left` property
-          const newPct = (newLabelLeftPx / MAX_WIDTH_PX) * 100;
-
-          // Apply final styling
-          labelEl.style.left = newPct + "%";
-
-          // Store the final pixel coordinates for the next iteration
-          placedLabels.push([newLabelLeftPx, newLabelRightPx]);
-          // --- END HORIZONTAL STAGGERING IMPLEMENTATION ---
+          markerLabels.appendChild(labelEl);
         });
 
         // 2. Start the loop that handles progress and revelation
-        startRevealLoop(true);
+        // We pass the new MAX_DURATION_MS to the loop for accurate bar movement
+        startRevealLoop(true, MAX_DURATION_MS);
       };
 
       // Reset
@@ -929,9 +903,12 @@
       }
 
       // reveal loop: polls player.getCurrentState() to update progress bar and optionally reveal markers
-      async function startRevealLoop(revealMarkers = false) {
+      async function startRevealLoop(revealMarkers = false, maxDuration = 0) {
         if (revealRAF) cancelAnimationFrame(revealRAF);
         progressWrap.style.display = "block";
+
+        const maxDur = maxDuration || 1; // Use 1 if no max duration is passed (for recording mode)
+
         async function tick() {
           if (!player) {
             revealRAF = requestAnimationFrame(tick);
@@ -942,30 +919,43 @@
             revealRAF = requestAnimationFrame(tick);
             return;
           }
+
           const pos = state.position; // ms
-          const dur = state.duration || 1;
-          const pct = Math.min(100, (pos / dur) * 100);
+          // Calculate progress bar percentage using the new max duration
+          const pct = Math.min(100, (pos / maxDur) * 100);
           bar.style.width = pct + "%";
+
           if (revealMarkers) {
             const kids = Array.from(markers.children);
+
             kids.forEach((k) => {
               const tt = parseInt(k.dataset.time || "0", 10);
-              const revealed = k.dataset.revealed === "true"; // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
+              const revealed = k.dataset.revealed === "true";
 
+              // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
               if (!revealed && pos >= tt) {
                 // Get the corresponding label element
                 const labelId = k.dataset.labelId;
-                const labelEl = document.getElementById(labelId); // Remove the active class (to restart the animation)
+                const labelEl = document.getElementById(labelId);
+
+                // Remove the active class (to restart the animation)
                 k.classList.remove("active");
-                if (labelEl) labelEl.classList.remove("active"); // <-- NEW // Force reflow for both elements
+                if (labelEl) labelEl.classList.remove("active");
+
+                // Force reflow for both elements
                 void k.offsetHeight;
-                if (labelEl) void labelEl.offsetHeight; // <-- NEW // Apply the active class to trigger the animation
+                if (labelEl) void labelEl.offsetHeight;
+
+                // Apply the active class to trigger the animation
                 k.classList.add("active"); // Apply bright color and pulse to marker line
-                if (labelEl) labelEl.classList.add("active"); // <-- NEW: Add active class to label
+                if (labelEl) labelEl.classList.add("active"); // Add active class to label
+
                 k.dataset.revealed = "true"; // Mark as revealed
               }
             });
-          } // continue loop while playing
+          }
+
+          // continue loop while playing
           if (!state.paused) {
             revealRAF = requestAnimationFrame(tick);
           } else {
@@ -977,6 +967,14 @@
         }
         tick();
       }
+
+      // Ensure the startRoundBtn calls startRevealLoop without a maxDuration (uses full song length for recording)
+      startRoundBtn.onclick = async () => {
+        // ... (rest of the logic remains the same)
+        // start progress loop (no reveal during recording)
+        startRevealLoop(false, 0); // Pass 0 or nothing to signal full length during recording
+        // ...
+      };
 
       // small helper
       function escapeHtml(s) {

@@ -96,7 +96,7 @@ const scopes = [
   'user-read-playback-state'
 ].join(' ');
 
-const redirectUri = window.location.origin + window.location.pathname; // use current page as redirect
+const redirectUri = window.location.href.split('#')[0]; // full URL without hash
 redirectShown.textContent = redirectUri;
 
 // OAuth helpers (implicit)
@@ -116,12 +116,14 @@ function parseHash() {
   if (!location.hash) return null;
   const hash = location.hash.substring(1);
   const params = new URLSearchParams(hash);
-  return {
+  const tokenData = {
     access_token: params.get('access_token'),
     token_type: params.get('token_type'),
     expires_in: params.get('expires_in'),
     scope: params.get('scope')
   };
+  console.log('Parsed token from hash:', tokenData);
+  return tokenData;
 }
 
 let ACCESS_TOKEN = null;
@@ -153,13 +155,11 @@ let revealRAF = null;
 // handle login flow
 loginBtn.onclick = () => {
   const clientId = CLIENT_ID_INPUT.value.trim();
-  if(!clientId) return alert('Paste your Spotify Client ID first');
-
-  // store client id for convenience
+  if (!clientId) return alert('Paste your Spotify Client ID first');
   localStorage.setItem('spotify_client_id', clientId);
-
-  const authUrl = buildAuthUrl(clientId);
-  window.location = authUrl;
+  const url = buildAuthUrl(clientId);
+  console.log('Redirecting to Spotify auth URL:', url);
+  window.location = url;
 };
 
 logoutBtn.onclick = () => {
@@ -174,42 +174,27 @@ logoutBtn.onclick = () => {
 
 // on load, parse token if present in hash
 (function initFromHash(){
+  console.log('Initializing Spotify auth...');
   const h = parseHash();
   if(h && h.access_token){
     ACCESS_TOKEN = h.access_token;
     const expires_in = parseInt(h.expires_in||3600,10);
     EXPIRES_AT = Date.now() + expires_in*1000;
-
-    // restore client id if stored
-    const storedCid = localStorage.getItem('spotify_client_id');
-    if(storedCid) CLIENT_ID_INPUT.value = storedCid;
-
-    // store token
+    console.log('Got token from hash, expires in:', expires_in, 'seconds');
     localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
     localStorage.setItem('spotify_expires_at', EXPIRES_AT);
-
-    // clean URL (remove hash)
-    history.replaceState(null, '', redirectUri + (window.location.search || ''));
-
-    stateInfo.textContent = 'Logged in';
-    loadSpotifySDKAndInit();
+    history.replaceState(null, '', redirectUri); // clean URL
   } else {
-    // check stored token
     const stored = localStorage.getItem('spotify_access_token');
     const exp = parseInt(localStorage.getItem('spotify_expires_at')||'0',10);
     if(stored && exp && Date.now() < exp){
       ACCESS_TOKEN = stored;
       EXPIRES_AT = exp;
-      stateInfo.textContent = 'Logged in (token from storage)';
-      loadSpotifySDKAndInit();
-    } else {
-      stateInfo.textContent = 'Not logged in';
+      console.log('Using stored access token, expires at', new Date(EXPIRES_AT).toISOString());
     }
-
-    // restore client id if stored
-    const storedCid = localStorage.getItem('spotify_client_id');
-    if(storedCid) CLIENT_ID_INPUT.value = storedCid;
   }
+  const storedCid = localStorage.getItem('spotify_client_id');
+  if(storedCid) CLIENT_ID_INPUT.value = storedCid;
 })();
 
 // Save client id when changed (convenience)

@@ -766,13 +766,21 @@
         if(revealMarkers){
          const kids = Array.from(markers.children);
          
-         // Check against all markers
          kids.forEach(k => {
           const tt = parseInt(k.dataset.time || '0', 10);
           const revealed = k.dataset.revealed === 'true';
-      
+
           // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
           if(!revealed && pos >= tt){
+           // --- FIX APPLIED HERE ---
+           // 1. Remove the active class (to restart the animation if needed)
+           k.classList.remove('active');
+           
+           // 2. Force browser reflow (a tiny performance cost for a visual guarantee)
+           // This ensures the browser recognizes the element is currently in the "dim" state.
+           void k.offsetHeight; 
+           
+           // 3. Apply the active class to trigger the animation
            k.classList.add('active'); // Apply bright color and pulse
            k.dataset.revealed = 'true'; // Mark as revealed
           }

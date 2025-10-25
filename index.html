@@ -60,20 +60,21 @@
         height: 56px;
         background: #1f2937;
         border-radius: 8px;
+        /* Removed overflow: visible; per your last request */
         border: 1px solid rgba(255, 255, 255, 0.1);
         display: none;
         margin-top: 45px;
+        z-index: 1; /* Give the wrapper a base stacking context */
       }
 
-      /* New Label Container FIX: Positioned relative to #progressWrap */
+      /* New Label Container - Positioned relative to #progressWrap, above it */
       #markerLabels {
         position: absolute;
-        /* Position the labels container just above progressWrap */
-        top: -45px; /* Use the same value as margin-top to place it perfectly above */
+        top: -45px; /* Places it visually above the progress bar */
         left: 0;
         right: 0;
         height: 40px;
-        z-index: 30;
+        z-index: 30; /* Keep high so it doesn't overlap title/buttons */
       }
 
       #bar {
@@ -84,6 +85,7 @@
         background: linear-gradient(90deg, #10b981, #34d399);
         width: 0%;
         opacity: 0.9;
+        z-index: 5; /* FIX: Ensure the bar is drawn on top of the background */
         transition: none;
       }
 
@@ -94,7 +96,15 @@
         right: 0;
         top: 0;
         bottom: 0;
+        z-index: 10; /* FIX: Ensure markers are drawn on top of the bar */
       }
+
+      /* Marker Label (the text) */
+      .markerLabel {
+        /* ... other styles ... */
+        z-index: 20; /* Keep z-index for individual labels high */
+      }
+
       .marker {
         position: absolute;
         top: 0;
@@ -334,10 +344,10 @@
 
       buzzes = [];
       renderBuzzList();
-      markers.innerHTML = '';
-      // FIX: markerLabels.innerHTML = ''; is no longer needed here 
+      markers.innerHTML = "";
+      // FIX: markerLabels.innerHTML = ''; is no longer needed here
       // because it will be cleared by the replay function.
-      progressWrap.style.display = 'block';
+      progressWrap.style.display = "block";
 
       // --- Core PKCE Functions ---
 

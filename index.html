@@ -54,13 +54,13 @@
         margin-bottom: 12px;
       }
 
-      /* New Label Container FIX: Position relative to the .wrap, not the body */
+      /* New Label Container FIX: Position relative to the progressWrap's position */
       #markerLabels {
         position: absolute;
-        /* Start at the top edge of the .wrap content area */
-        top: 0;
-        left: 20px; /* Align with the left padding of the body/wrap */
-        right: 20px; /* Use right to set the width to the content width */
+        /* FIX: Position the labels container just above progressWrap */
+        top: -45px; /* Aligns to where the progressWrap margin starts */
+        left: 20px;
+        right: 20px;
         height: 40px;
         z-index: 30;
       }
@@ -74,6 +74,7 @@
         overflow: visible;
         border: 1px solid rgba(255, 255, 255, 0.1);
         display: none;
+        /* Margin to reserve space for the labels container above it */
         margin-top: 45px;
       }
       #bar {
@@ -130,12 +131,12 @@
       /* Marker Label (the text) */
       .markerLabel {
         position: absolute;
-        transform: translateX(
-          -50%
-        ); /* Center over the calculated 'left' position */
-        background: transparent;
-        padding: 2px 6px;
-        border-radius: 6px;
+        transform: translateX(-50%);
+        /* FIX: Add background and slight padding for readability */
+        background: #071020; /* Dark background to cover other elements */
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 2px 4px; /* Reduced padding slightly */
+        border-radius: 4px;
         font-size: 12px;
         color: #dff8fb;
         white-space: nowrap;
@@ -803,7 +804,7 @@
 
         // 1. Clear and render dim markers
         markers.innerHTML = "";
-        markerLabels.innerHTML = ""; // <-- CLEAR NEW LABEL CONTAINER
+        markerLabels.innerHTML = "";
         bar.style.width = "0%";
 
         const state = await player.getCurrentState();
@@ -820,45 +821,83 @@
         // Sort buzzes to ensure we process them in time order
         buzzes.sort((a, b) => a.time_ms - b.time_ms);
 
-        // --- STAGGERING LOGIC ---
-        const LEVEL_1_TOP = 2; // Position 1 (near the top of the 40px container)
-        const LEVEL_2_TOP = 18; // Position 2 (staggered down 16px)
-        // --- END STAGGERING LOGIC ---
+        // --- HORIZONTAL STAGGERING LOGIC ---
+        // This array will hold the [left_position_in_pixels, required_right_edge_in_pixels]
+        const placedLabels = [];
+        const MAX_WIDTH_PX =
+          document.getElementById("markerLabels").offsetWidth;
+        const SAFETY_PADDING = 8; // Pixel space between labels
+        const TOP_POSITION = 5; // Fixed vertical position for all labels
+        // --- END HORIZONTAL STAGGERING LOGIC ---
 
         buzzes.forEach((b, index) => {
           const pct = duration ? (b.time_ms / duration) * 100 : 0;
           const markerLeft = pct + "%";
 
-          // ------------------------------------------------
           // 1. CREATE MARKER (The line in the progress bar)
-          // ------------------------------------------------
           const markerEl = document.createElement("div");
           markerEl.className = "marker";
           markerEl.style.left = markerLeft;
           markerEl.dataset.time = b.time_ms;
           markerEl.dataset.revealed = "false";
-          // We will reference the label from the marker later
           markerEl.dataset.labelId = `label-${index}`;
 
           markers.appendChild(markerEl);
 
-          // ------------------------------------------------
           // 2. CREATE LABEL (The name above the bar)
-          // ------------------------------------------------
           const labelEl = document.createElement("div");
           labelEl.className = "markerLabel";
-
-          // Use the index to alternate vertical level
-          const adjustedTop = index % 2 === 0 ? LEVEL_1_TOP : LEVEL_2_TOP;
-
           labelEl.id = `label-${index}`;
-          labelEl.style.left = markerLeft; // Position horizontally
-          labelEl.style.top = adjustedTop + "px"; // Position vertically
           labelEl.innerHTML = `${escapeHtml(b.name)}<br>${(
             b.time_ms / 1000
           ).toFixed(2)}s`;
 
-          markerLabels.appendChild(labelEl);
+          // --- HORIZONTAL STAGGERING IMPLEMENTATION ---
+          // Must calculate the exact pixel position and width of the label
+          // We'll place it first, then check its bounds
+          labelEl.style.left = markerLeft;
+          labelEl.style.top = TOP_POSITION + "px";
+          markerLabels.appendChild(labelEl); // Must be added to DOM to measure
+
+          let actualLabelWidth = labelEl.offsetWidth;
+          let actualLeftPx = labelEl.offsetLeft;
+
+          let newLabelLeftPx = actualLeftPx;
+          let newLabelRightPx = actualLeftPx + actualLabelWidth;
+
+          // Check against previously placed labels
+          for (let i = placedLabels.length - 1; i >= 0; i--) {
+            const [prevLeftPx, prevRightPx] = placedLabels[i];
+
+            // If the current label overlaps the previous one
+            if (newLabelLeftPx < prevRightPx) {
+              // Shift the current label to the right
+              newLabelLeftPx = prevRightPx + SAFETY_PADDING;
+              newLabelRightPx = newLabelLeftPx + actualLabelWidth;
+
+              // If shifting right causes it to jump too far, stop checking previous labels
+              if (newLabelRightPx > MAX_WIDTH_PX) {
+                // If shifting right pushes it off the screen, try shifting left instead
+                newLabelLeftPx = Math.max(
+                  0,
+                  actualLeftPx - (prevRightPx - newLabelLeftPx) - SAFETY_PADDING
+                );
+                newLabelRightPx = newLabelLeftPx + actualLabelWidth;
+                break;
+              }
+            }
+          }
+
+          // Update the label's horizontal position (using a fixed top position)
+          // We must translate the new pixel position back to percentage for the `left` property
+          const newPct = (newLabelLeftPx / MAX_WIDTH_PX) * 100;
+
+          // Apply final styling
+          labelEl.style.left = newPct + "%";
+
+          // Store the final pixel coordinates for the next iteration
+          placedLabels.push([newLabelLeftPx, newLabelRightPx]);
+          // --- END HORIZONTAL STAGGERING IMPLEMENTATION ---
         });
 
         // 2. Start the loop that handles progress and revelation

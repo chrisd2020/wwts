@@ -12,7 +12,7 @@
         margin: 0;
         padding: 20px;
       }
-      /* FIX: Make the wrapper relative for absolute positioning of labels */
+      /* .wrap no longer needs position: relative, but it's safe to keep it */
       .wrap {
         max-width: 980px;
         margin: 0 auto;
@@ -54,18 +54,7 @@
         margin-bottom: 12px;
       }
 
-      /* New Label Container FIX: Position relative to the progressWrap's position */
-      #markerLabels {
-        position: absolute;
-        /* PULL DOWN labels container to ensure visibility */
-        top: -40px;
-        left: 20px;
-        right: 20px;
-        height: 40px;
-        z-index: 30;
-      }
-
-      /* Progress Bar Container */
+      /* Progress Bar Container - Kept relative, which is the key */
       #progressWrap {
         position: relative;
         height: 56px;
@@ -76,6 +65,18 @@
         display: none;
         margin-top: 45px;
       }
+
+      /* New Label Container FIX: Positioned relative to #progressWrap */
+      #markerLabels {
+        position: absolute;
+        /* Position the labels container just above progressWrap */
+        top: -45px; /* Use the same value as margin-top to place it perfectly above */
+        left: 0;
+        right: 0;
+        height: 40px;
+        z-index: 30;
+      }
+
       #bar {
         position: absolute;
         left: 0;
@@ -84,6 +85,7 @@
         background: linear-gradient(90deg, #10b981, #34d399);
         width: 0%;
         opacity: 0.9;
+        transition: none;
       }
 
       /* Marker Styles (The vertical line inside the progress bar) */
@@ -239,11 +241,10 @@
         <div class="buzzList" id="buzzList"></div>
       </div>
 
-      <div id="markerLabels"></div>
-      <div id="progressWrap" class="panel">
+      <div id="progressWrap" style="display: none">
         <div id="bar"></div>
-
-        <div class="markers" id="markers"></div>
+        <div id="markers"></div>
+        <div id="markerLabels"></div>
       </div>
 
       <div class="panel">
@@ -332,9 +333,12 @@
       const markerLabels = document.getElementById("markerLabels"); // <-- ADD THIS LINE
       const stateInfo = document.getElementById("stateInfo");
 
-      let buzzes = []; // {name, time_ms}
-      let roundActive = false;
-      let revealRAF = null;
+      buzzes = [];
+      renderBuzzList();
+      markers.innerHTML = '';
+      // FIX: markerLabels.innerHTML = ''; is no longer needed here 
+      // because it will be cleared by the replay function.
+      progressWrap.style.display = 'block';
 
       // --- Core PKCE Functions ---
 

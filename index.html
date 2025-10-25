@@ -350,6 +350,7 @@
       const markers = document.getElementById("markers");
       const markerLabels = document.getElementById("markerLabels"); // <-- ADD THIS LINE
       const stateInfo = document.getElementById("stateInfo");
+      let revealRAF = null;
 
       buzzes = [];
       renderBuzzList();
@@ -972,7 +973,6 @@
       resetBtn.onclick = () => {
         buzzes = [];
         let roundActive = false;
-        let revealRAF = null;
         markers.innerHTML = "";
         bar.style.width = "0%";
         progressWrap.style.display = "none";

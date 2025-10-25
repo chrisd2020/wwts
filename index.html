@@ -70,8 +70,10 @@
       /* New Label Container - Positioned above the bar */
       #markerLabels {
         position: absolute;
-        top: -45px;
-        /* ... other styles ... */
+        top: -45px; /* Places it visually above the progress bar */
+        left: 0;
+        right: 0;
+        height: 40px;
         z-index: 5; /* Lower the z-index, as it is outside the main bar area */
       }
 
@@ -99,7 +101,16 @@
 
       /* Marker Label (the text) */
       .markerLabel {
-        /* ... other styles ... */
+        position: absolute;
+        transform: translateX(-50%);
+        background: #071020;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #dff8fb;
+        white-space: nowrap;
+        text-align: center;
         z-index: 20; /* Keep z-index for individual labels high */
       }
 
@@ -960,10 +971,11 @@
       // Reset
       resetBtn.onclick = () => {
         buzzes = [];
+        let roundActive = false;
+        let revealRAF = null;
         markers.innerHTML = "";
         bar.style.width = "0%";
         progressWrap.style.display = "none";
-        roundActive = false;
         renderBuzzList();
         stateInfo.textContent = "Buzzes reset";
       };

@@ -57,8 +57,14 @@
       /* New Label Container: Positioned relative to .wrap */
       #markerLabels {
         position: absolute;
-        /* Position above the progressWrap margin */
-        top: 100px; /* Use a fixed top value that places it below controls but above the bar */
+        /* FIX: Calculate the position relative to the top of the .wrap container.
+       The progress bar is placed with margin-top: 45px, so we need to clear 
+       the height of the h1 (approx 20px) + the controls (approx 40px) 
+       + the top padding (20px). A value like 60px should place it
+       just below the controls and above the margin. 
+       Let's use 60px as a baseline for positioning under the control panel. 
+    */
+        top: 60px;
         left: 20px; /* Aligns with the padding of the body/wrap */
         right: 20px;
         height: 40px;

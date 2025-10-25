@@ -804,13 +804,12 @@
         // Sort buzzes to ensure we process them in time order
         buzzes.sort((a, b) => a.time_ms - b.time_ms);
 
-        // --- LABEL STAGGERING LOGIC START ---
-        const labelStack = []; // Stores {left_pct, top_px} of previously placed labels
-        const PADDING_PCT = 3.5; // Horizontal space buffer (approx. one short name width)
-        const STACK_HEIGHT = 16; // Vertical adjustment for each stack level (pixels)
-        // --- LABEL STAGGERING LOGIC END ---
+        // --- SIMPLIFIED STAGGERING LOGIC START ---
+        const LEVEL_1_TOP = -38; // Original position
+        const LEVEL_2_TOP = -54; // Dropped position (16px higher)
+        // --- SIMPLIFIED STAGGERING LOGIC END ---
 
-        buzzes.forEach((b) => {
+        buzzes.forEach((b, index) => {
           const el = document.createElement("div");
           el.className = "marker"; // Start dim/grey
           const pct = duration ? (b.time_ms / duration) * 100 : 0;
@@ -818,34 +817,15 @@
           el.dataset.time = b.time_ms;
           el.dataset.revealed = "false";
 
-          // --- LABEL STAGGERING IMPLEMENTATION ---
-          let verticalLevel = 0;
-          const currentLeft = pct;
-
-          // Check for overlaps with already placed labels
-          for (const stack of labelStack) {
-            const min = stack.left_pct - PADDING_PCT;
-            const max = stack.left_pct + PADDING_PCT;
-
-            // If the current label is within the horizontal range of a previous label,
-            // we need to push it up a level.
-            if (currentLeft >= min && currentLeft <= max) {
-              verticalLevel = Math.max(verticalLevel, stack.level + 1);
-            }
-          }
-
-          // Calculate the new 'top' position based on the required vertical level
-          // (Initial -38px) - (Level * Stack Adjustment)
-          const adjustedTop = -38 - verticalLevel * STACK_HEIGHT;
-
-          // Store this label's position for future overlap checks
-          labelStack.push({ left_pct: currentLeft, level: verticalLevel });
+          // --- STAGGERING IMPLEMENTATION ---
+          // Use the index to alternate between Level 1 and Level 2 top positions
+          const adjustedTop = index % 2 === 0 ? LEVEL_1_TOP : LEVEL_2_TOP;
 
           // Apply the label with the adjusted top position
           el.innerHTML = `<div class="label" style="top: ${adjustedTop}px;">${escapeHtml(
             b.name
           )}<br>${(b.time_ms / 1000).toFixed(2)}s</div>`;
-          // --- END LABEL STAGGERING IMPLEMENTATION ---
+          // --- END STAGGERING IMPLEMENTATION ---
 
           markers.appendChild(el);
         });

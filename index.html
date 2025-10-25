@@ -968,12 +968,47 @@
         tick();
       }
 
-      // Ensure the startRoundBtn calls startRevealLoop without a maxDuration (uses full song length for recording)
+      // Start round: clears buzzes, plays and enables buzz button
       startRoundBtn.onclick = async () => {
-        // ... (rest of the logic remains the same)
-        // start progress loop (no reveal during recording)
-        startRevealLoop(false, 0); // Pass 0 or nothing to signal full length during recording
-        // ...
+        if (!loadedTrackUri) return alert("Load a track URI first");
+        if (!deviceId)
+          return alert(
+            "Player not ready. Make sure the SDK initialized and a device ID was obtained."
+          );
+
+        buzzes = [];
+        renderBuzzList();
+        markers.innerHTML = "";
+        markerLabels.innerHTML = "";
+        progressWrap.style.display = "block";
+        bar.style.width = "0%";
+
+        // Start playback at 0 and check for API errors
+        try {
+          // Await the function to ensure the API call completes
+          const success = await playOnDevice(loadedTrackUri, 0);
+
+          if (success) {
+            roundActive = true;
+            stateInfo.textContent = "Round started — buzzes enabled";
+            // Start progress loop (0 ensures full track length for recording mode)
+            startRevealLoop(false, 0);
+          } else {
+            // This should ideally not happen if playOnDevice correctly throws on API error,
+            // but it serves as a fail-safe.
+            alert("Playback initiation failed (Unknown API error).");
+            stateInfo.textContent = "Round failed to start.";
+          }
+        } catch (e) {
+          // Catch any errors thrown by playOnDevice, like network or Spotify API failures
+          alert(
+            "Could not start round. Check player state and Premium status. Error: " +
+              e.message
+          );
+          console.error("Start Round Error:", e);
+          stateInfo.textContent =
+            "Round failed to start (See console for API error).";
+        }
       };
 
       // small helper

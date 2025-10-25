@@ -868,7 +868,6 @@
         const duration = state.duration; // ms
 
         // --- ZOOM FACTOR IMPLEMENTATION ---
-        // The bar will only display the first 25% of the song.
         const ZOOM_FACTOR = 0.25;
         const MAX_DURATION_MS = duration * ZOOM_FACTOR;
         // --- END ZOOM FACTOR ---
@@ -886,31 +885,26 @@
 
         visibleBuzzes.sort((a, b) => a.time_ms - b.time.ms);
 
-        // --- SIMPLE STAGGERING LOGIC ---
         const LEVEL_1_TOP = 2; // Upper line
         const LEVEL_2_TOP = 18; // Lower line (16px difference)
-        // --- END SIMPLE STAGGERING LOGIC ---
 
         visibleBuzzes.forEach((b, index) => {
           // All calculations must use MAX_DURATION_MS as the denominator (100% of the bar)
           const pct = (b.time_ms / MAX_DURATION_MS) * 100;
           const markerLeft = pct + "%";
 
-          // 1. CREATE MARKER (The line in the progress bar)
+          // 1. CREATE MARKER
           const markerEl = document.createElement("div");
           markerEl.className = "marker";
           markerEl.style.left = markerLeft;
           markerEl.dataset.time = b.time_ms;
           markerEl.dataset.revealed = "false";
           markerEl.dataset.labelId = `label-${index}`;
-
           markers.appendChild(markerEl);
 
-          // 2. CREATE LABEL (The name above the bar)
+          // 2. CREATE LABEL
           const labelEl = document.createElement("div");
           labelEl.className = "markerLabel";
-
-          // Use the index to alternate vertical level
           const adjustedTop = index % 2 === 0 ? LEVEL_1_TOP : LEVEL_2_TOP;
 
           labelEl.id = `label-${index}`;
@@ -919,13 +913,11 @@
           labelEl.innerHTML = `${escapeHtml(b.name)}<br>${(
             b.time_ms / 1000
           ).toFixed(2)}s`;
-
           markerLabels.appendChild(labelEl);
         });
 
-        // 2. Start the loop that handles progress and revelation
-        // We pass the new MAX_DURATION_MS to the loop for accurate bar movement
-        startRevealLoop(true, MAX_DURATION_MS);
+        // PASS THE MODE FLAG AND THE CALCULATED ZOOM DURATION
+        startRevealLoop("reveal", MAX_DURATION_MS);
       };
 
       // Reset
@@ -953,10 +945,13 @@
       }
 
       // reveal loop: polls player.getCurrentState() to update progress bar and optionally reveal markers
-      // maxDuration is now ALWAYS the zoomed duration in both modes.
-      async function startRevealLoop(revealMarkers = false, maxDuration = 1) {
+      // mode can be 'recording' or 'reveal'. maxDuration is only used in 'reveal' mode.
+      async function startRevealLoop(mode, maxDuration = 0) {
         if (revealRAF) cancelAnimationFrame(revealRAF);
         progressWrap.style.display = "block";
+
+        const IS_REVEAL = mode === "reveal";
+        let currentMaxDur = maxDuration; // For reveal mode, this is the 25% duration
 
         async function tick() {
           if (!player) {
@@ -973,17 +968,33 @@
             return;
           }
 
-          const pos = state.position; // ms
+          // --- DURATION CALCULATION MOVED HERE ---
+          if (mode === "recording" && currentMaxDur === 0) {
+            // Only runs once, when the duration is first available
+            const ZOOM_FACTOR = 0.25;
+            currentMaxDur = state.duration * ZOOM_FACTOR;
 
-          // Use the provided maxDuration (which is the 25% zoom duration)
-          const currentMaxDur = maxDuration;
+            if (currentMaxDur === 0) {
+              // Should not happen, but prevents division by zero
+              currentMaxDur = 1;
+            }
+          }
+
+          if (currentMaxDur === 0) {
+            // Still waiting for duration, skip progress bar update
+            revealRAF = requestAnimationFrame(tick);
+            return;
+          }
+          // --- END DURATION CALCULATION ---
+
+          const pos = state.position; // ms
 
           // Calculate progress bar percentage
           const pct = Math.min(100, (pos / currentMaxDur) * 100);
           bar.style.width = pct + "%";
 
           // --- Marker Reveal Logic ---
-          if (revealMarkers) {
+          if (IS_REVEAL) {
             // If the playback position exceeds the reveal window, pause the player
             if (pos > currentMaxDur) {
               if (!state.paused) {
@@ -1044,28 +1055,14 @@
         progressWrap.style.display = "block";
         bar.style.width = "0%";
 
-        // Get track duration to calculate the zoomed max duration
-        const state = await player.getCurrentState();
-        if (!state || !state.duration)
-          return alert("Could not get track duration.");
-
-        const ZOOM_FACTOR = 0.25;
-        const MAX_DURATION_MS = state.duration * ZOOM_FACTOR;
-
         // Start playback at 0 and check for API errors
         try {
           const success = await playOnDevice(loadedTrackUri, 0);
 
-          if (success) {
-            roundActive = true;
-            stateInfo.textContent = "Round started — buzzes enabled (25% Zoom)";
-
-            // PASS THE CALCULATED ZOOM DURATION TO THE LOOP
-            // revealMarkers=false (no reveal during recording)
-            startRevealLoop(false, MAX_DURATION_MS);
-          } else {
+          if (!success) {
             alert("Playback initiation failed (Unknown API error).");
             stateInfo.textContent = "Round failed to start.";
+            return;
           }
         } catch (e) {
           alert(
@@ -1075,7 +1072,15 @@
           console.error("Start Round Error:", e);
           stateInfo.textContent =
             "Round failed to start (See console for API error).";
+          return;
         }
+
+        roundActive = true;
+        stateInfo.textContent = "Round started — buzzes enabled (25% Zoom)";
+
+        // Pass a flag indicating the mode, but no specific duration.
+        // The loop will find the duration itself.
+        startRevealLoop("recording");
       };
 
       // small helper

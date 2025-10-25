@@ -52,17 +52,28 @@
         margin-bottom: 12px;
       }
 
-      /* Progress Bar Container Changes */
+      /* New Label Container: Takes up the space where the names should appear */
+      #markerLabels {
+        position: absolute;
+        left: 0;
+        /* Match padding of the main wrapper */
+        padding: 0 20px;
+        width: 100%;
+        height: 40px; /* Gives space for the staggered names */
+        top: 0;
+        z-index: 30; /* Ensure it is above everything */
+      }
+
+      /* Progress Bar Container */
       #progressWrap {
         position: relative;
         height: 56px;
         background: #1f2937;
         border-radius: 8px;
-        /* 1. YOUR REQUEST: Allow labels to show outside the container */
         overflow: visible;
         border: 1px solid rgba(255, 255, 255, 0.1);
         display: none;
-        /* 2. YOUR REQUEST: Add top margin */
+        /* Adjusted margin to clear the new #markerLabels container above it */
         margin-top: 45px;
       }
       #bar {
@@ -75,7 +86,7 @@
         opacity: 0.9;
       }
 
-      /* Marker Styles */
+      /* Marker Styles (The vertical line inside the progress bar) */
       .markers {
         position: absolute;
         left: 0;
@@ -116,13 +127,12 @@
         box-shadow: 0 0 8px #f59e0b;
       }
 
-      /* Label Changes */
-      .marker .label {
+      /* Marker Label (the text) - Now absolutely positioned inside #markerLabels */
+      .markerLabel {
         position: absolute;
-        /* 3. YOUR REQUEST: Adjust top position for label clearance */
-        top: -38px;
-        transform: translateX(-50%);
-        left: 0;
+        transform: translateX(
+          -50%
+        ); /* Center over the calculated 'left' position */
         background: transparent;
         padding: 2px 6px;
         border-radius: 6px;
@@ -224,6 +234,7 @@
         <div class="buzzList" id="buzzList"></div>
       </div>
 
+      <div id="markerLabels"></div>
       <div id="progressWrap" class="panel">
         <div id="bar"></div>
 
@@ -313,6 +324,7 @@
       const progressWrap = document.getElementById("progressWrap");
       const bar = document.getElementById("bar");
       const markers = document.getElementById("markers");
+      const markerLabels = document.getElementById("markerLabels"); // <-- ADD THIS LINE
       const stateInfo = document.getElementById("stateInfo");
 
       let buzzes = []; // {name, time_ms}
@@ -776,22 +788,20 @@
 
         // CRITICAL CHANGE: Seek to start and play FIRST
         try {
-          // A. Seek to start and play
           await playOnDevice(loadedTrackUri, 0);
           stateInfo.textContent = "Replaying for reveal...";
         } catch (e) {
           alert("Replay play error: " + e.message);
           return;
         }
-        // --------------------------------------------------------
 
         // 1. Clear and render dim markers
         markers.innerHTML = "";
+        markerLabels.innerHTML = ""; // <-- CLEAR NEW LABEL CONTAINER
         bar.style.width = "0%";
 
         const state = await player.getCurrentState();
 
-        // Check state again now that we've interacted with the player
         if (
           !state ||
           !state.track_window ||
@@ -804,30 +814,45 @@
         // Sort buzzes to ensure we process them in time order
         buzzes.sort((a, b) => a.time_ms - b.time_ms);
 
-        // --- SIMPLIFIED STAGGERING LOGIC START ---
-        const LEVEL_1_TOP = -38; // Original position
-        const LEVEL_2_TOP = -54; // Dropped position (16px higher)
-        // --- SIMPLIFIED STAGGERING LOGIC END ---
+        // --- STAGGERING LOGIC ---
+        const LEVEL_1_TOP = 2; // Position 1 (near the top of the 40px container)
+        const LEVEL_2_TOP = 18; // Position 2 (staggered down 16px)
+        // --- END STAGGERING LOGIC ---
 
         buzzes.forEach((b, index) => {
-          const el = document.createElement("div");
-          el.className = "marker"; // Start dim/grey
           const pct = duration ? (b.time_ms / duration) * 100 : 0;
-          el.style.left = pct + "%";
-          el.dataset.time = b.time_ms;
-          el.dataset.revealed = "false";
+          const markerLeft = pct + "%";
 
-          // --- STAGGERING IMPLEMENTATION ---
-          // Use the index to alternate between Level 1 and Level 2 top positions
+          // ------------------------------------------------
+          // 1. CREATE MARKER (The line in the progress bar)
+          // ------------------------------------------------
+          const markerEl = document.createElement("div");
+          markerEl.className = "marker";
+          markerEl.style.left = markerLeft;
+          markerEl.dataset.time = b.time_ms;
+          markerEl.dataset.revealed = "false";
+          // We will reference the label from the marker later
+          markerEl.dataset.labelId = `label-${index}`;
+
+          markers.appendChild(markerEl);
+
+          // ------------------------------------------------
+          // 2. CREATE LABEL (The name above the bar)
+          // ------------------------------------------------
+          const labelEl = document.createElement("div");
+          labelEl.className = "markerLabel";
+
+          // Use the index to alternate vertical level
           const adjustedTop = index % 2 === 0 ? LEVEL_1_TOP : LEVEL_2_TOP;
 
-          // Apply the label with the adjusted top position
-          el.innerHTML = `<div class="label" style="top: ${adjustedTop}px;">${escapeHtml(
-            b.name
-          )}<br>${(b.time_ms / 1000).toFixed(2)}s</div>`;
-          // --- END STAGGERING IMPLEMENTATION ---
+          labelEl.id = `label-${index}`;
+          labelEl.style.left = markerLeft; // Position horizontally
+          labelEl.style.top = adjustedTop + "px"; // Position vertically
+          labelEl.innerHTML = `${escapeHtml(b.name)}<br>${(
+            b.time_ms / 1000
+          ).toFixed(2)}s`;
 
-          markers.appendChild(el);
+          markerLabels.appendChild(labelEl);
         });
 
         // 2. Start the loop that handles progress and revelation
@@ -862,7 +887,6 @@
       async function startRevealLoop(revealMarkers = false) {
         if (revealRAF) cancelAnimationFrame(revealRAF);
         progressWrap.style.display = "block";
-
         async function tick() {
           if (!player) {
             revealRAF = requestAnimationFrame(tick);
@@ -873,37 +897,30 @@
             revealRAF = requestAnimationFrame(tick);
             return;
           }
-
           const pos = state.position; // ms
           const dur = state.duration || 1;
           const pct = Math.min(100, (pos / dur) * 100);
           bar.style.width = pct + "%";
-
           if (revealMarkers) {
             const kids = Array.from(markers.children);
-
             kids.forEach((k) => {
               const tt = parseInt(k.dataset.time || "0", 10);
-              const revealed = k.dataset.revealed === "true";
+              const revealed = k.dataset.revealed === "true"; // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
 
-              // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
               if (!revealed && pos >= tt) {
-                // --- FIX APPLIED HERE ---
-                // 1. Remove the active class (to restart the animation if needed)
+                // Get the corresponding label element
+                const labelId = k.dataset.labelId;
+                const labelEl = document.getElementById(labelId); // Remove the active class (to restart the animation)
                 k.classList.remove("active");
-
-                // 2. Force browser reflow (a tiny performance cost for a visual guarantee)
-                // This ensures the browser recognizes the element is currently in the "dim" state.
+                if (labelEl) labelEl.classList.remove("active"); // <-- NEW // Force reflow for both elements
                 void k.offsetHeight;
-
-                // 3. Apply the active class to trigger the animation
-                k.classList.add("active"); // Apply bright color and pulse
+                if (labelEl) void labelEl.offsetHeight; // <-- NEW // Apply the active class to trigger the animation
+                k.classList.add("active"); // Apply bright color and pulse to marker line
+                if (labelEl) labelEl.classList.add("active"); // <-- NEW: Add active class to label
                 k.dataset.revealed = "true"; // Mark as revealed
               }
             });
-          }
-
-          // continue loop while playing
+          } // continue loop while playing
           if (!state.paused) {
             revealRAF = requestAnimationFrame(tick);
           } else {
@@ -927,6 +944,13 @@
       // Kick off initialization
       window.addEventListener("load", initFromCallback);
 
+      // keyboard mapping: space for buzz
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          e.preventDefault();
+          buzzBtn.click();
+        }
+      });
       // keyboard mapping: space for buzz
       window.addEventListener("keydown", (e) => {
         if (e.code === "Space") {

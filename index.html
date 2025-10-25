@@ -12,7 +12,7 @@
         margin: 0;
         padding: 20px;
       }
-      /* .wrap no longer needs position: relative, but it's safe to keep it */
+      /* .wrap is the container for all content and must be position: relative */
       .wrap {
         max-width: 980px;
         margin: 0 auto;
@@ -54,27 +54,29 @@
         margin-bottom: 12px;
       }
 
-      /* Progress Bar Container - Kept relative, which is the key */
+      /* New Label Container: Positioned relative to .wrap */
+      #markerLabels {
+        position: absolute;
+        /* Position above the progressWrap margin */
+        top: 100px; /* Use a fixed top value that places it below controls but above the bar */
+        left: 20px; /* Aligns with the padding of the body/wrap */
+        right: 20px;
+        height: 40px;
+        z-index: 30;
+      }
+
+      /* Progress Bar Container: Enable overflow: hidden for rounded corners */
       #progressWrap {
         position: relative;
         height: 56px;
         background: #1f2937;
         border-radius: 8px;
-        overflow: hidden;
+        overflow: hidden; /* FIX: Added back to enable rounded corners */
         border: 1px solid rgba(255, 255, 255, 0.1);
         display: none;
+        /* Margin to reserve space for the labels container above it */
         margin-top: 45px;
-        z-index: 1; /* Give the wrapper a base stacking context */
-      }
-
-      /* New Label Container - Positioned above the bar */
-      #markerLabels {
-        position: absolute;
-        top: -45px; /* Places it visually above the progress bar */
-        left: 0;
-        right: 0;
-        height: 40px;
-        z-index: 5; /* Lower the z-index, as it is outside the main bar area */
+        z-index: 1;
       }
 
       #bar {
@@ -85,7 +87,7 @@
         background: linear-gradient(90deg, #10b981, #34d399);
         width: 0%;
         opacity: 0.9;
-        z-index: 10; /* FIX: Ensure the bar is drawn on top of the background */
+        z-index: 10;
         transition: none;
       }
 
@@ -96,7 +98,7 @@
         right: 0;
         top: 0;
         bottom: 0;
-        z-index: 15; /* FIX: Ensure markers are drawn on top of the bar (15 > 10) */
+        z-index: 15;
       }
 
       /* Marker Label (the text) */
@@ -259,10 +261,11 @@
         <div class="buzzList" id="buzzList"></div>
       </div>
 
+      <div id="markerLabels"></div>
+
       <div id="progressWrap" style="display: none">
         <div id="bar"></div>
         <div id="markers"></div>
-        <div id="markerLabels"></div>
       </div>
 
       <div class="panel">

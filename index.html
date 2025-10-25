@@ -154,9 +154,12 @@ let revealRAF = null;
 loginBtn.onclick = () => {
   const clientId = CLIENT_ID_INPUT.value.trim();
   if(!clientId) return alert('Paste your Spotify Client ID first');
-  const url = buildAuthUrl(clientId);
-  // redirect to Spotify auth
-  window.location = url;
+
+  // store client id for convenience
+  localStorage.setItem('spotify_client_id', clientId);
+
+  const authUrl = buildAuthUrl(clientId);
+  window.location = authUrl;
 };
 
 logoutBtn.onclick = () => {
@@ -176,21 +179,34 @@ logoutBtn.onclick = () => {
     ACCESS_TOKEN = h.access_token;
     const expires_in = parseInt(h.expires_in||3600,10);
     EXPIRES_AT = Date.now() + expires_in*1000;
-    // store client id for convenience if previously set
-    const cid = new URLSearchParams(window.location.search).get('client_id') || localStorage.getItem('spotify_client_id');
-    if(cid) CLIENT_ID_INPUT.value = cid;
+
+    // restore client id if stored
+    const storedCid = localStorage.getItem('spotify_client_id');
+    if(storedCid) CLIENT_ID_INPUT.value = storedCid;
+
+    // store token
     localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
     localStorage.setItem('spotify_expires_at', EXPIRES_AT);
-    // remove hash (clean URL)
+
+    // clean URL (remove hash)
     history.replaceState(null, '', redirectUri + (window.location.search || ''));
+
+    stateInfo.textContent = 'Logged in';
+    loadSpotifySDKAndInit();
   } else {
-    // check stored
+    // check stored token
     const stored = localStorage.getItem('spotify_access_token');
     const exp = parseInt(localStorage.getItem('spotify_expires_at')||'0',10);
     if(stored && exp && Date.now() < exp){
       ACCESS_TOKEN = stored;
       EXPIRES_AT = exp;
+      stateInfo.textContent = 'Logged in (token from storage)';
+      loadSpotifySDKAndInit();
+    } else {
+      stateInfo.textContent = 'Not logged in';
     }
+
+    // restore client id if stored
     const storedCid = localStorage.getItem('spotify_client_id');
     if(storedCid) CLIENT_ID_INPUT.value = storedCid;
   }

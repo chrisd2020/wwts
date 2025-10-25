@@ -897,7 +897,7 @@
 
           if (state && state.duration && state.duration > 0) {
             duration = state.duration;
-            break; // Success! Duration is available.
+            break;
           } else if (
             state &&
             state.track_window &&
@@ -905,7 +905,7 @@
             state.track_window.current_track.duration_ms > 0
           ) {
             duration = state.track_window.current_track.duration_ms;
-            break; // Success! Duration found in the window object.
+            break;
           }
 
           attempts++;
@@ -934,11 +934,19 @@
           );
         }
 
-        // Sort is necessary here
         visibleBuzzes.sort((a, b) => a.time_ms - b.time_ms);
 
-        const LEVEL_1_TOP = 2; // Upper line
-        const LEVEL_2_TOP = 18; // Lower line (16px difference)
+        // --- IMPROVED STAGGERING LOGIC (4 Vertical Levels) ---
+        // Vertical distance between the start of two adjacent levels (40px > 37px label height)
+        const VERTICAL_SPACING = 40;
+
+        // Define 4 levels: 0, 40, 80, 120 pixels from the top of markerLabels container.
+        const LEVEL_OFFSETS = [
+          0, // Level 1 (Top)
+          VERTICAL_SPACING, // Level 2
+          VERTICAL_SPACING * 2, // Level 3
+          VERTICAL_SPACING * 3, // Level 4 (Bottom)
+        ];
 
         visibleBuzzes.forEach((b, index) => {
           // All calculations must use MAX_DURATION_MS as the denominator (100% of the bar)
@@ -957,7 +965,10 @@
           // 2. CREATE LABEL
           const labelEl = document.createElement("div");
           labelEl.className = "markerLabel";
-          const adjustedTop = index % 2 === 0 ? LEVEL_1_TOP : LEVEL_2_TOP;
+
+          // Use the index modulo 4 to cycle through the four offsets
+          const levelIndex = index % LEVEL_OFFSETS.length;
+          const adjustedTop = LEVEL_OFFSETS[levelIndex];
 
           labelEl.id = `label-${index}`;
           labelEl.style.left = markerLeft; // Position horizontally

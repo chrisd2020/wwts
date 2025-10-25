@@ -918,7 +918,6 @@
             !state.track_window ||
             state.track_window.current_track == null
           ) {
-            // If state is unavailable, continue polling
             revealRAF = requestAnimationFrame(tick);
             return;
           }
@@ -926,7 +925,8 @@
           const pos = state.position; // ms
 
           // FIX: Determine the correct maximum duration to use for the progress bar calculation
-          // If maxDuration was passed (for reveal mode), use it. Otherwise, use the track's full duration.
+          // If maxDuration was passed (for reveal/zoom mode, maxDuration > 0), use it.
+          // Otherwise (for recording mode, maxDuration = 0), use the track's full duration.
           const currentMaxDur =
             maxDuration > 0 ? maxDuration : state.duration || 1;
 
@@ -934,9 +934,9 @@
           const pct = Math.min(100, (pos / currentMaxDur) * 100);
           bar.style.width = pct + "%";
 
+          // --- Marker Reveal Logic (Remains unchanged) ---
           if (revealMarkers) {
-            // If the playback position exceeds the reveal window (e.g., pos > 25% mark),
-            // pause the player to prevent the bar from sitting at 100% indefinitely.
+            // If the playback position exceeds the reveal window, pause the player
             if (pos > currentMaxDur) {
               if (!state.paused) {
                 player.pause();
@@ -950,12 +950,10 @@
               const tt = parseInt(k.dataset.time || "0", 10);
               const revealed = k.dataset.revealed === "true";
 
-              // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
               if (!revealed && pos >= tt) {
                 const labelId = k.dataset.labelId;
                 const labelEl = document.getElementById(labelId);
 
-                // Force re-animation logic
                 k.classList.remove("active");
                 if (labelEl) labelEl.classList.remove("active");
 

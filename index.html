@@ -907,25 +907,43 @@
         if (revealRAF) cancelAnimationFrame(revealRAF);
         progressWrap.style.display = "block";
 
-        const maxDur = maxDuration || 1; // Use 1 if no max duration is passed (for recording mode)
-
         async function tick() {
           if (!player) {
             revealRAF = requestAnimationFrame(tick);
             return;
           }
           const state = await player.getCurrentState();
-          if (!state) {
+          if (
+            !state ||
+            !state.track_window ||
+            state.track_window.current_track == null
+          ) {
+            // If state is unavailable, continue polling
             revealRAF = requestAnimationFrame(tick);
             return;
           }
 
           const pos = state.position; // ms
-          // Calculate progress bar percentage using the new max duration
-          const pct = Math.min(100, (pos / maxDur) * 100);
+
+          // FIX: Determine the correct maximum duration to use for the progress bar calculation
+          // If maxDuration was passed (for reveal mode), use it. Otherwise, use the track's full duration.
+          const currentMaxDur =
+            maxDuration > 0 ? maxDuration : state.duration || 1;
+
+          // Calculate progress bar percentage using the determined max duration
+          const pct = Math.min(100, (pos / currentMaxDur) * 100);
           bar.style.width = pct + "%";
 
           if (revealMarkers) {
+            // If the playback position exceeds the reveal window (e.g., pos > 25% mark),
+            // pause the player to prevent the bar from sitting at 100% indefinitely.
+            if (pos > currentMaxDur) {
+              if (!state.paused) {
+                player.pause();
+                stateInfo.textContent = "Replay finished.";
+              }
+            }
+
             const kids = Array.from(markers.children);
 
             kids.forEach((k) => {
@@ -934,23 +952,20 @@
 
               // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
               if (!revealed && pos >= tt) {
-                // Get the corresponding label element
                 const labelId = k.dataset.labelId;
                 const labelEl = document.getElementById(labelId);
 
-                // Remove the active class (to restart the animation)
+                // Force re-animation logic
                 k.classList.remove("active");
                 if (labelEl) labelEl.classList.remove("active");
 
-                // Force reflow for both elements
                 void k.offsetHeight;
                 if (labelEl) void labelEl.offsetHeight;
 
-                // Apply the active class to trigger the animation
-                k.classList.add("active"); // Apply bright color and pulse to marker line
-                if (labelEl) labelEl.classList.add("active"); // Add active class to label
+                k.classList.add("active");
+                if (labelEl) labelEl.classList.add("active");
 
-                k.dataset.revealed = "true"; // Mark as revealed
+                k.dataset.revealed = "true";
               }
             });
           }
@@ -985,22 +1000,21 @@
 
         // Start playback at 0 and check for API errors
         try {
-          // Await the function to ensure the API call completes
           const success = await playOnDevice(loadedTrackUri, 0);
 
           if (success) {
             roundActive = true;
-            stateInfo.textContent = "Round started — buzzes enabled";
-            // Start progress loop (0 ensures full track length for recording mode)
-            startRevealLoop(false, 0);
+            stateInfo.textContent =
+              "Round started — buzzes enabled (Full Playback)";
+
+            // FIX: Call startRevealLoop without a maxDuration parameter.
+            // It will default to the player's full duration in the loop.
+            startRevealLoop(false);
           } else {
-            // This should ideally not happen if playOnDevice correctly throws on API error,
-            // but it serves as a fail-safe.
             alert("Playback initiation failed (Unknown API error).");
             stateInfo.textContent = "Round failed to start.";
           }
         } catch (e) {
-          // Catch any errors thrown by playOnDevice, like network or Spotify API failures
           alert(
             "Could not start round. Check player state and Premium status. Error: " +
               e.message

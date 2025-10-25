@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Win While They're Singing — Spotify Host</title>
+<style>
+  body{font-family:Inter,system-ui,Arial,sans-serif;background:#071020;color:#e6eef6;margin:0;padding:20px}
+  .wrap{max-width:980px;margin:0 auto}
+  h1{margin:0 0 8px}
+  .muted{color:#9aa6b2;font-size:13px}
+  input,button,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+  button{cursor:pointer;background:linear-gradient(90deg,#06b6d4,#7dd3fc);color:#022;padding:8px 12px;font-weight:700}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .panel{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;margin-bottom:12px}
+  #progressWrap{position:relative;height:56px;background:#061224;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);display:none}
+  #bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(6,182,212,0.15),rgba(29,78,216,0.12));width:0%}
+  .markers{position:absolute;left:0;right:0;top:0;bottom:0}
+  .marker{position:absolute;top:6px;width:2px;height:44px;background:#ffd54f;opacity:0}
+  .marker .label{position:absolute;top:-20px;left:-6px;background:#042434;padding:2px 6px;border-radius:6px;font-size:12px;color:#dff8fb}
+  .buzzList{margin-top:8px}
+  .buzzItem{display:flex;justify-content:space-between;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px;margin-bottom:6px}
+  .note{font-size:13px;color:#9aa6b2}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Win While They're Singing — Spotify (Host)</h1>
+    <div class="muted">Spotify-only host mode. You must have <strong>Spotify Premium</strong>. Register your HTTPS redirect URI in Spotify Dashboard and host this file there.</div>
+
+    <div class="panel">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="clientId" placeholder="Paste your Spotify Client ID here" style="min-width:320px">
+        <button id="loginBtn">Log in to Spotify</button>
+        <button id="logoutBtn" style="background:#f87171">Log out</button>
+      </div>
+      <div class="note" style="margin-top:8px">Redirect URI used: <span id="redirectShown"></span></div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="trackInput" placeholder="Paste Spotify track URL or URI (e.g. https://open.spotify.com/track/…)" style="min-width:320px">
+        <button id="loadTrack">Load Track</button>
+      </div>
+      <div class="note" style="margin-top:8px">After loading, press <strong>Play</strong> below to start playback on this browser device (host account).</div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button id="playBtn">Play</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="seekStartBtn">Seek to 0</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="startRound">Start Round (start playback & enable buzz)</button>
+        <button id="buzzBtn" style="background:#f97316">Buzz (spacebar)</button>
+        <button id="replayBtn">Replay + Reveal</button>
+        <button id="resetBtn" style="background:#94a3b8">Reset Buzzes</button>
+      </div>
+      <div class="note" style="margin-top:8px">When buzzing, you'll be prompted for the player's name (simple single-host input). Replace with dedicated buttons later if you want physical buzzers or phone controls.</div>
+      <div class="buzzList" id="buzzList"></div>
+    </div>
+
+    <div id="progressWrap" class="panel">
+      <div id="bar"></div>
+      <div class="markers" id="markers"></div>
+    </div>
+
+    <div class="panel">
+      <div><strong>State</strong></div>
+      <div class="note" id="stateInfo" style="margin-top:8px">Not logged in</div>
+    </div>
+
+    <div class="note" style="margin-top:12px">Notes: This app uses the Spotify Web Playback SDK to run audio in-browser (host). If you want each player to buzz on their phones independently, I can add a simple sockets server later — but Spotify allows only one active playback per account at a time.</div>
+  </div>
+
+<script>
+/*
+  Spotify-only host version using implicit grant (response_type=token).
+  Requirements:
+   - Host must be Spotify Premium.
+   - Register redirect URI in Spotify Dashboard (exact match to page URL).
+   - Paste Client ID into the "Client ID" field and click Log in.
+*/
+
+const CLIENT_ID_INPUT = document.getElementById('clientId');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const redirectShown = document.getElementById('redirectShown');
+
+const scopes = [
+  'streaming',
+  'user-read-email',
+  'user-read-private',
+  'user-modify-playback-state',
+  'user-read-playback-state'
+].join(' ');
+
+const redirectUri = window.location.origin + window.location.pathname; // use current page as redirect
+redirectShown.textContent = redirectUri;
+
+// OAuth helpers (implicit)
+function buildAuthUrl(clientId){
+  const base = 'https://accounts.spotify.com/authorize';
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'token',
+    redirect_uri: redirectUri,
+    scope: scopes,
+    show_dialog: 'true'
+  });
+  return base + '?' + params.toString();
+}
+
+function parseHash() {
+  if (!location.hash) return null;
+  const hash = location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  return {
+    access_token: params.get('access_token'),
+    token_type: params.get('token_type'),
+    expires_in: params.get('expires_in'),
+    scope: params.get('scope')
+  };
+}
+
+let ACCESS_TOKEN = null;
+let EXPIRES_AT = 0;
+let player = null;
+let deviceId = null;
+
+const loadTrackBtn = document.getElementById('loadTrack');
+const trackInput = document.getElementById('trackInput');
+const playBtn = document.getElementById('playBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const seekStartBtn = document.getElementById('seekStartBtn');
+
+const startRoundBtn = document.getElementById('startRound');
+const buzzBtn = document.getElementById('buzzBtn');
+const replayBtn = document.getElementById('replayBtn');
+const resetBtn = document.getElementById('resetBtn');
+const buzzListEl = document.getElementById('buzzList');
+
+const progressWrap = document.getElementById('progressWrap');
+const bar = document.getElementById('bar');
+const markers = document.getElementById('markers');
+const stateInfo = document.getElementById('stateInfo');
+
+let buzzes = []; // {name, time_ms}
+let roundActive = false;
+let revealRAF = null;
+
+// handle login flow
+loginBtn.onclick = () => {
+  const clientId = CLIENT_ID_INPUT.value.trim();
+  if(!clientId) return alert('Paste your Spotify Client ID first');
+  const url = buildAuthUrl(clientId);
+  // redirect to Spotify auth
+  window.location = url;
+};
+
+logoutBtn.onclick = () => {
+  ACCESS_TOKEN = null;
+  EXPIRES_AT = 0;
+  localStorage.removeItem('spotify_access_token');
+  localStorage.removeItem('spotify_expires_at');
+  localStorage.removeItem('spotify_client_id');
+  stateInfo.textContent = 'Logged out';
+  alert('Logged out locally. To fully revoke use Spotify account settings.');
+};
+
+// on load, parse token if present in hash
+(function initFromHash(){
+  const h = parseHash();
+  if(h && h.access_token){
+    ACCESS_TOKEN = h.access_token;
+    const expires_in = parseInt(h.expires_in||3600,10);
+    EXPIRES_AT = Date.now() + expires_in*1000;
+    // store client id for convenience if previously set
+    const cid = new URLSearchParams(window.location.search).get('client_id') || localStorage.getItem('spotify_client_id');
+    if(cid) CLIENT_ID_INPUT.value = cid;
+    localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
+    localStorage.setItem('spotify_expires_at', EXPIRES_AT);
+    // remove hash (clean URL)
+    history.replaceState(null, '', redirectUri + (window.location.search || ''));
+  } else {
+    // check stored
+    const stored = localStorage.getItem('spotify_access_token');
+    const exp = parseInt(localStorage.getItem('spotify_expires_at')||'0',10);
+    if(stored && exp && Date.now() < exp){
+      ACCESS_TOKEN = stored;
+      EXPIRES_AT = exp;
+    }
+    const storedCid = localStorage.getItem('spotify_client_id');
+    if(storedCid) CLIENT_ID_INPUT.value = storedCid;
+  }
+})();
+
+// Save client id when changed (convenience)
+CLIENT_ID_INPUT.addEventListener('change', ()=> localStorage.setItem('spotify_client_id', CLIENT_ID_INPUT.value.trim()));
+
+// load SDK script then init player when we have token
+function loadSpotifySDKAndInit(){
+  if(!ACCESS_TOKEN) return;
+  // load SDK if needed
+  if(!window.Spotify){
+    const tag = document.createElement('script');
+    tag.src = "https://sdk.scdn.co/spotify-player.js";
+    document.head.appendChild(tag);
+  }
+  window.onSpotifyWebPlaybackSDKReady = () => { initializePlayer(); };
+  // attempt to initialize immediately if SDK already present
+  if(window.Spotify && !player) initializePlayer();
+}
+
+async function initializePlayer(){
+  if(!ACCESS_TOKEN) return;
+  if(player) return;
+  player = new Spotify.Player({
+    name: 'WinWhileTheyreSinging — Host',
+    getOAuthToken: cb => { cb(ACCESS_TOKEN); },
+    volume: 0.8
+  });
+
+  // ready
+  player.addListener('ready', ({ device_id }) => {
+    deviceId = device_id;
+    stateInfo.textContent = 'Player ready — device_id: ' + device_id;
+    // transfer playback here if desired
+  });
+
+  player.addListener('not_ready', ({ device_id }) => {
+    console.warn('Device went offline', device_id);
+    stateInfo.textContent = 'Player went offline';
+  });
+
+  player.addListener('initialization_error', ({ message }) => { console.error(message); stateInfo.textContent = 'Init error: ' + message; });
+  player.addListener('authentication_error', ({ message }) => { console.error(message); stateInfo.textContent = 'Auth error: ' + message; });
+
+  player.addListener('player_state_changed', (state) => {
+    // update UI if desired
+    // console.log('player_state_changed', state);
+  });
+
+  await player.connect();
+}
+
+// helper to call Spotify Web API endpoints
+async function apiFetch(path, opts = {}) {
+  if(!ACCESS_TOKEN) throw new Error('No access token');
+  const res = await fetch('https://api.spotify.com/v1' + path, {
+    headers: {
+      Authorization: 'Bearer ' + ACCESS_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    ...opts
+  });
+  if(!res.ok){
+    const text = await res.text();
+    throw new Error('Spotify API ' + res.status + ' ' + text);
+  }
+  return res.json().catch(()=>null);
+}
+
+// load track (extract track URI)
+function extractUriOrUriFromUrl(text){
+  if(!text) return null;
+  // If it's spotify:track:... return as-is
+  if(text.startsWith('spotify:')) return text;
+  try{
+    const u = new URL(text);
+    // open.spotify.com/track/{id}
+    if(u.hostname.includes('spotify.com')){
+      const parts = u.pathname.split('/');
+      const type = parts[1];
+      const id = parts[2];
+      if(type && id) return `spotify:${type}:${id.split('?')[0]}`;
+    }
+  }catch(e){}
+  // fallback: assume user supplied spotify:track:id
+  return text;
+}
+
+let loadedTrackUri = null;
+loadTrackBtn.onclick = () => {
+  const val = trackInput.value.trim();
+  const uri = extractUriOrUriFromUrl(val);
+  if(!uri) return alert('Paste a Spotify track URL or URI');
+  loadedTrackUri = uri;
+  stateInfo.textContent = 'Loaded ' + uri;
+};
+
+// play on our device
+async function playOnDevice(uri, position_ms=0){
+  if(!ACCESS_TOKEN) return alert('Log in first');
+  if(!deviceId) {
+    alert('Player not ready yet. Make sure the page prompted to start the Spotify player and you have Premium.');
+    return;
+  }
+  const body = JSON.stringify({ uris: [uri.replace('spotify:track:','spotify:track:')], position_ms, offset: { position: 0 } });
+  // Use play endpoint and specify device_id query
+  const url = `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: 'Bearer ' + ACCESS_TOKEN, 'Content-Type': 'application/json' },
+    body
+  });
+  if(res.status === 204 || res.status === 202) return true;
+  const txt = await res.text();
+  throw new Error('Play failed: ' + res.status + ' ' + txt);
+}
+
+playBtn.onclick = async () => {
+  if(!loadedTrackUri) return alert('Load a track first');
+  try{
+    await playOnDevice(loadedTrackUri, 0);
+    stateInfo.textContent = 'Playing on host device';
+  }catch(e){ alert('Play error: ' + e.message); console.error(e); }
+};
+pauseBtn.onclick = async () => {
+  if(!ACCESS_TOKEN || !deviceId) return;
+  try{
+    await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + ACCESS_TOKEN }});
+    stateInfo.textContent = 'Paused';
+  }catch(e){ alert('Pause failed: ' + e); }
+};
+seekStartBtn.onclick = async () => {
+  if(!ACCESS_TOKEN || !deviceId) return;
+  try{
+    await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=0&device_id=${deviceId}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + ACCESS_TOKEN }});
+    stateInfo.textContent = 'Seeked to start';
+  }catch(e){ alert('Seek failed: ' + e); }
+};
+
+// Start round: clears buzzes, plays and enables buzz button
+startRoundBtn.onclick = async () => {
+  if(!loadedTrackUri) return alert('Load a track first');
+  buzzes = [];
+  renderBuzzList();
+  progressWrap.style.display = 'block';
+  // start playback at 0
+  try{
+    await playOnDevice(loadedTrackUri, 0);
+    roundActive = true;
+    stateInfo.textContent = 'Round started — buzzes enabled';
+    // start progress loop
+    startRevealLoop(); // show bar even while first run; markers will be revealed only on replay
+  }catch(e){ alert('Could not start round: ' + e.message); console.error(e); }
+};
+
+// Buzz: record current playback position via player.getCurrentState()
+buzzBtn.onclick = async () => {
+  if(!roundActive) return alert('Round not active');
+  if(!player) return alert('Player not initialized yet');
+  const name = prompt('Who buzzed? (type player name)');
+  if(!name) return;
+  const state = await player.getCurrentState();
+  if(!state) return alert('Could not read player state (try interacting with the player first)');
+  const pos = state.position; // ms
+  buzzes.push({ name: name.trim(), time_ms: Math.max(0, Math.floor(pos)) });
+  renderBuzzList();
+};
+
+// Replay + Reveal: seek to 0 and reveal each buzz marker when the replay reaches that time
+replayBtn.onclick = async () => {
+  if(buzzes.length === 0) return alert('No buzzes recorded');
+  if(!deviceId) return alert('Device not ready');
+  // clear markers and mark them hidden initially (we will create them positioned)
+  markers.innerHTML = '';
+  bar.style.width = '0%';
+  // create marker elements at percent positions (they will be revealed when time reached)
+  // need current track duration -> get playback state and get track window.duration
+  const state = await player.getCurrentState();
+  if(!state || !state.track_window || state.track_window.current_track == null){
+    return alert('Could not get current track info. Make sure playback is active.');
+  }
+  const duration = state.duration; // ms
+  buzzes.forEach((b, idx) => {
+    const el = document.createElement('div');
+    el.className = 'marker';
+    const pct = duration ? (b.time_ms / duration) * 100 : 0;
+    el.style.left = pct + '%';
+    el.dataset.time = b.time_ms;
+    el.innerHTML = `<div class="label">${escapeHtml(b.name)}<br>${(b.time_ms/1000).toFixed(2)}s</div>`;
+    markers.appendChild(el);
+  });
+  // Seek to start and play
+  try{
+    await playOnDevice(loadedTrackUri, 0);
+  }catch(e){ alert('Replay play error: ' + e.message); return; }
+  // start reveal loop to update bar and reveal markers when current position >= marker time
+  startRevealLoop(true);
+};
+
+// Reset
+resetBtn.onclick = () => {
+  buzzes = [];
+  markers.innerHTML = '';
+  bar.style.width = '0%';
+  progressWrap.style.display = 'none';
+  renderBuzzList();
+  stateInfo.textContent = 'Buzzes reset';
+};
+
+// render buzz list
+function renderBuzzList(){
+  buzzListEl.innerHTML = '';
+  buzzes.forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'buzzItem';
+    div.innerHTML = `<div>${escapeHtml(b.name)}</div><div>${(b.time_ms/1000).toFixed(2)} s</div>`;
+    buzzListEl.appendChild(div);
+  });
+}
+
+// reveal loop: polls player.getCurrentState() to update progress bar and optionally reveal markers
+async function startRevealLoop(revealMarkers=false){
+  if(revealRAF) cancelAnimationFrame(revealRAF);
+  progressWrap.style.display = 'block';
+  async function tick(){
+    if(!player) { revealRAF = requestAnimationFrame(tick); return; }
+    const state = await player.getCurrentState();
+    if(!state){
+      revealRAF = requestAnimationFrame(tick);
+      return;
+    }
+    const pos = state.position; // ms
+    const dur = state.duration || 1;
+    const pct = Math.min(100, (pos / dur) * 100);
+    bar.style.width = pct + '%';
+    if(revealMarkers){
+      const kids = Array.from(markers.children);
+      kids.forEach(k => {
+        const tt = parseInt(k.dataset.time || '0', 10);
+        if(pos + 5 >= tt){ k.style.opacity = '1'; } // small epsilon
+      });
+    }
+    // continue loop while playing
+    if(!state.paused){
+      revealRAF = requestAnimationFrame(tick);
+    } else {
+      // if paused, keep polling once per 250ms to detect resumed playback
+      setTimeout(()=>{ revealRAF = requestAnimationFrame(tick); }, 250);
+    }
+  }
+  tick();
+}
+
+// small helper
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// automatically load SDK if we have token
+if(ACCESS_TOKEN){
+  loadSpotifySDKAndInit();
+  stateInfo.textContent = 'Logged in (token present)';
+} else {
+  stateInfo.textContent = 'Not logged in';
+}
+
+// Provide a small convenience: if user revisits and token stored in localStorage, use it
+window.addEventListener('load', () => {
+  // local storage loaded in initFromHash earlier
+  if(ACCESS_TOKEN){
+    loadSpotifySDKAndInit();
+  }
+});
+
+// keyboard mapping: space for buzz
+window.addEventListener('keydown', (e) => {
+  if(e.code === 'Space'){
+    e.preventDefault();
+    buzzBtn.click();
+  }
+});
+</script>
+</body>
+</html>

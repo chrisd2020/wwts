@@ -5,94 +5,150 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Win While They're Singing — Spotify Host (PKCE)</title>
     <style>
-       body{font-family:Inter,system-ui,Arial,sans-serif;background:#071020;color:#e6eef6;margin:0;padding:20px}
-       .wrap{max-width:980px;margin:0 auto}
-       h1{margin:0 0 8px}
-       .muted{color:#9aa6b2;font-size:13px}
-       input,button,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-       button{cursor:pointer;background:linear-gradient(90deg,#06b6d4,#7dd3fc);color:#022;padding:8px 12px;font-weight:700}
-       .controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-       .panel{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;margin-bottom:12px}
-       
-       /* Progress Bar Container Changes */
-       #progressWrap{
-        position:relative;
-        height:56px;
-        background:#1f2937;
-        border-radius:8px;
+      body {
+        font-family: Inter, system-ui, Arial, sans-serif;
+        background: #071020;
+        color: #e6eef6;
+        margin: 0;
+        padding: 20px;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 8px;
+      }
+      .muted {
+        color: #9aa6b2;
+        font-size: 13px;
+      }
+      input,
+      button,
+      select {
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: transparent;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+        background: linear-gradient(90deg, #06b6d4, #7dd3fc);
+        color: #022;
+        padding: 8px 12px;
+        font-weight: 700;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+      .panel {
+        background: rgba(255, 255, 255, 0.02);
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+      }
+
+      /* Progress Bar Container Changes */
+      #progressWrap {
+        position: relative;
+        height: 56px;
+        background: #1f2937;
+        border-radius: 8px;
         /* 1. YOUR REQUEST: Allow labels to show outside the container */
-        overflow:visible; 
-        border:1px solid rgba(255,255,255,0.1);
-        display:none;
+        overflow: visible;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: none;
         /* 2. YOUR REQUEST: Add top margin */
         margin-top: 45px;
-       }
-       #bar{
-        position:absolute;
-        left:0;
-        top:0;
-        bottom:0;
-        background:linear-gradient(90deg, #10b981, #34d399); 
-        width:0%;
+      }
+      #bar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, #10b981, #34d399);
+        width: 0%;
         opacity: 0.9;
-       }
-       
-       /* Marker Styles */
-       .markers{
-        position:absolute;
-        left:0;
-        right:0;
-        top:0;
-        bottom:0;
-       }
-       .marker{
-        position:absolute;
-        top:0;
-        width:2px;
-        height:100%;
-        background:#4b5563; 
-        opacity:0.6; 
+      }
+
+      /* Marker Styles */
+      .markers {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+      }
+      .marker {
+        position: absolute;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: #4b5563;
+        opacity: 0.6;
         transition: all 0.2s ease-out;
         z-index: 10;
-       }
-       
-       /* Pulse animation definition */
-       @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-       }
-       
-       /* Active marker style - triggered by JS */
-       .marker.active {
-        background:#f59e0b;
-        width: 4px; 
+      }
+
+      /* Pulse animation definition */
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        }
+      }
+
+      /* Active marker style - triggered by JS */
+      .marker.active {
+        background: #f59e0b;
+        width: 4px;
         opacity: 1;
-        animation: pulse 0.5s ease-out; 
+        animation: pulse 0.5s ease-out;
         box-shadow: 0 0 8px #f59e0b;
-       }
-      
-       /* Label Changes */
-       .marker .label{
-        position:absolute;
+      }
+
+      /* Label Changes */
+      .marker .label {
+        position: absolute;
         /* 3. YOUR REQUEST: Adjust top position for label clearance */
-        top:-38px; 
+        top: -38px;
         transform: translateX(-50%);
-        left:0;
-        background:transparent;
-        padding:2px 6px;
-        border-radius:6px;
-        font-size:12px;
-        color:#dff8fb; 
+        left: 0;
+        background: transparent;
+        padding: 2px 6px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #dff8fb;
         white-space: nowrap;
         text-align: center;
         z-index: 20;
-       }
-       
-       .buzzList{margin-top:8px}
-       .buzzItem{display:flex;justify-content:space-between;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px;margin-bottom:6px}
-       .note{font-size:13px;color:#9aa6b2}
-      </style>
+      }
+
+      .buzzList {
+        margin-top: 8px;
+      }
+      .buzzItem {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 6px;
+        margin-bottom: 6px;
+      }
+      .note {
+        font-size: 13px;
+        color: #9aa6b2;
+      }
+    </style>
   </head>
   <body>
     <div class="wrap">
@@ -190,589 +246,714 @@
 
     <script>
       // --- PKCE Helper Functions ---
-      
+
       function generateRandomString(length) {
-       let text = '';
-       const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-       for (let i = 0; i < length; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-       }
-       return text;
+        let text = "";
+        const possible =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (let i = 0; i < length; i++) {
+          text += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return text;
       }
-      
+
       async function generateCodeChallenge(codeVerifier) {
-       const data = new TextEncoder().encode(codeVerifier);
-       const digest = await window.crypto.subtle.digest('SHA-256', data);
-       return btoa(String.fromCharCode.apply(null, [...new Uint8Array(digest)]))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+        const data = new TextEncoder().encode(codeVerifier);
+        const digest = await window.crypto.subtle.digest("SHA-256", data);
+        return btoa(
+          String.fromCharCode.apply(null, [...new Uint8Array(digest)])
+        )
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
       }
-      
+
       // --- Main App Logic ---
-      
-      const CLIENT_ID_INPUT = document.getElementById('clientId');
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn = document.getElementById('logoutBtn');
-      const redirectShown = document.getElementById('redirectShown');
-      
+
+      const CLIENT_ID_INPUT = document.getElementById("clientId");
+      const loginBtn = document.getElementById("loginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const redirectShown = document.getElementById("redirectShown");
+
       const scopes = [
-       'streaming',
-       'user-read-email',
-       'user-read-private',
-       'user-modify-playback-state',
-       'user-read-playback-state'
-      ].join(' ');
-      
+        "streaming",
+        "user-read-email",
+        "user-read-private",
+        "user-modify-playback-state",
+        "user-read-playback-state",
+      ].join(" ");
+
       // Full URL without hash (used as redirect_uri)
-      const redirectUri = window.location.href.split('#')[0].split('?')[0]; 
+      const redirectUri = window.location.href.split("#")[0].split("?")[0];
       redirectShown.textContent = redirectUri;
-      
-      const AUTH_URL = 'https://accounts.spotify.com/authorize';
-      const TOKEN_URL = 'https://accounts.spotify.com/api/token';
-      const API_BASE_URL = 'https://api.spotify.com/v1';
-      
+
+      const AUTH_URL = "https://accounts.spotify.com/authorize";
+      const TOKEN_URL = "https://accounts.spotify.com/api/token";
+      const API_BASE_URL = "https://api.spotify.com/v1";
+
       let ACCESS_TOKEN = null;
       let EXPIRES_AT = 0;
       let REFRESH_TOKEN = null;
-      
+
       let player = null;
       let deviceId = null;
-      
-      const loadTrackBtn = document.getElementById('loadTrack');
-      const trackInput = document.getElementById('trackInput');
-      const playBtn = document.getElementById('playBtn');
-      const pauseBtn = document.getElementById('pauseBtn');
-      const seekStartBtn = document.getElementById('seekStartBtn');
-      
-      const startRoundBtn = document.getElementById('startRound');
-      const buzzBtn = document.getElementById('buzzBtn');
-      const replayBtn = document.getElementById('replayBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const buzzListEl = document.getElementById('buzzList');
-      
-      const progressWrap = document.getElementById('progressWrap');
-      const bar = document.getElementById('bar');
-      const markers = document.getElementById('markers');
-      const stateInfo = document.getElementById('stateInfo');
-      
+
+      const loadTrackBtn = document.getElementById("loadTrack");
+      const trackInput = document.getElementById("trackInput");
+      const playBtn = document.getElementById("playBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
+      const seekStartBtn = document.getElementById("seekStartBtn");
+
+      const startRoundBtn = document.getElementById("startRound");
+      const buzzBtn = document.getElementById("buzzBtn");
+      const replayBtn = document.getElementById("replayBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const buzzListEl = document.getElementById("buzzList");
+
+      const progressWrap = document.getElementById("progressWrap");
+      const bar = document.getElementById("bar");
+      const markers = document.getElementById("markers");
+      const stateInfo = document.getElementById("stateInfo");
+
       let buzzes = []; // {name, time_ms}
       let roundActive = false;
       let revealRAF = null;
-      
-      
+
       // --- Core PKCE Functions ---
-      
+
       // Step 1: Redirect to Authorization
       async function buildAuthUrl(clientId) {
-       const codeVerifier = generateRandomString(128);
-       const codeChallenge = await generateCodeChallenge(codeVerifier);
-      
-       // Store verifier for later exchange
-       localStorage.setItem('code_verifier', codeVerifier);
-      
-       const params = new URLSearchParams({
-        client_id: clientId,
-        response_type: 'code', // <-- Requesting a code, not a token
-        redirect_uri: redirectUri,
-        scope: scopes,
-        code_challenge_method: 'S256',
-        code_challenge: codeChallenge,
-        show_dialog: 'true',
-        state: generateRandomString(16) // Optional but recommended
-       });
-       return AUTH_URL + '?' + params.toString();
+        const codeVerifier = generateRandomString(128);
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+        // Store verifier for later exchange
+        localStorage.setItem("code_verifier", codeVerifier);
+
+        const params = new URLSearchParams({
+          client_id: clientId,
+          response_type: "code", // <-- Requesting a code, not a token
+          redirect_uri: redirectUri,
+          scope: scopes,
+          code_challenge_method: "S256",
+          code_challenge: codeChallenge,
+          show_dialog: "true",
+          state: generateRandomString(16), // Optional but recommended
+        });
+        return AUTH_URL + "?" + params.toString();
       }
-      
+
       // Step 2: Exchange Code for Token
       async function exchangeCodeForToken(clientId, code, codeVerifier) {
-       const body = new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        code_verifier: codeVerifier // PKCE element
-       });
-      
-       const response = await fetch(TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body
-       });
-      
-       if (!response.ok) {
-        throw new Error('Token exchange failed: ' + response.status + ' ' + await response.text());
-       }
-      
-       return response.json();
+        const body = new URLSearchParams({
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+          code_verifier: codeVerifier, // PKCE element
+        });
+
+        const response = await fetch(TOKEN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body,
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            "Token exchange failed: " +
+              response.status +
+              " " +
+              (await response.text())
+          );
+        }
+
+        return response.json();
       }
-      
+
       // Step 3: Refresh Token
       async function refreshToken(clientId, storedRefreshToken) {
-       const body = new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: storedRefreshToken,
-        client_id: clientId // Required for PKCE refresh
-       });
-      
-       const response = await fetch(TOKEN_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body
-       });
-      
-       if (!response.ok) {
-        console.error('Token refresh failed');
-        throw new Error('Token refresh failed: ' + response.status);
-       }
-      
-       return response.json();
+        const body = new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: storedRefreshToken,
+          client_id: clientId, // Required for PKCE refresh
+        });
+
+        const response = await fetch(TOKEN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body,
+        });
+
+        if (!response.ok) {
+          console.error("Token refresh failed");
+          throw new Error("Token refresh failed: " + response.status);
+        }
+
+        return response.json();
       }
-      
+
       // --- Initialization and Event Handlers ---
-      
+
       loginBtn.onclick = async () => {
-       const clientId = CLIENT_ID_INPUT.value.trim();
-       if (!clientId) return alert('Paste your Spotify Client ID first');
-       localStorage.setItem('spotify_client_id', clientId);
-       try {
-        const url = await buildAuthUrl(clientId);
-        console.log('Redirecting to Spotify auth URL (PKCE):', url);
-        window.location = url;
-       } catch(e) {
-        console.error(e);
-        alert('Could not generate PKCE challenge. Check console.');
-       }
+        const clientId = CLIENT_ID_INPUT.value.trim();
+        if (!clientId) return alert("Paste your Spotify Client ID first");
+        localStorage.setItem("spotify_client_id", clientId);
+        try {
+          const url = await buildAuthUrl(clientId);
+          console.log("Redirecting to Spotify auth URL (PKCE):", url);
+          window.location = url;
+        } catch (e) {
+          console.error(e);
+          alert("Could not generate PKCE challenge. Check console.");
+        }
       };
-      
+
       logoutBtn.onclick = () => {
-       ACCESS_TOKEN = null;
-       EXPIRES_AT = 0;
-       REFRESH_TOKEN = null;
-       localStorage.removeItem('spotify_access_token');
-       localStorage.removeItem('spotify_expires_at');
-       localStorage.removeItem('spotify_client_id');
-       localStorage.removeItem('spotify_refresh_token');
-       localStorage.removeItem('code_verifier');
-       stateInfo.textContent = 'Logged out';
-       alert('Logged out locally. To fully revoke use Spotify account settings.');
-       // Reload page to clear player
-       window.location.reload();
+        ACCESS_TOKEN = null;
+        EXPIRES_AT = 0;
+        REFRESH_TOKEN = null;
+        localStorage.removeItem("spotify_access_token");
+        localStorage.removeItem("spotify_expires_at");
+        localStorage.removeItem("spotify_client_id");
+        localStorage.removeItem("spotify_refresh_token");
+        localStorage.removeItem("code_verifier");
+        stateInfo.textContent = "Logged out";
+        alert(
+          "Logged out locally. To fully revoke use Spotify account settings."
+        );
+        // Reload page to clear player
+        window.location.reload();
       };
-      
+
       // Handle redirection from Spotify (contains 'code' in query params)
       async function initFromCallback() {
-       console.log('Initializing Spotify auth...');
-       
-       const urlParams = new URLSearchParams(window.location.search);
-       const authCode = urlParams.get('code');
-       const storedCid = localStorage.getItem('spotify_client_id');
-      
-       if (authCode && storedCid) {
-        const codeVerifier = localStorage.getItem('code_verifier');
-        if (!codeVerifier) {
-         stateInfo.textContent = 'Auth failed: Missing code verifier.';
-         history.replaceState(null, '', redirectUri);
-         return;
-        }
-      
-        stateInfo.textContent = 'Exchanging authorization code for tokens...';
-        try {
-         const tokenData = await exchangeCodeForToken(storedCid, authCode, codeVerifier);
-         
-         // Store tokens
-         ACCESS_TOKEN = tokenData.access_token;
-         REFRESH_TOKEN = tokenData.refresh_token;
-         const expires_in = parseInt(tokenData.expires_in || 3600, 10);
-         EXPIRES_AT = Date.now() + expires_in * 1000;
-         
-         localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
-         localStorage.setItem('spotify_expires_at', EXPIRES_AT);
-         if(REFRESH_TOKEN) localStorage.setItem('spotify_refresh_token', REFRESH_TOKEN);
-         localStorage.removeItem('code_verifier'); // Verifier is single-use
-      
-         stateInfo.textContent = 'Logged in successfully via PKCE.';
-         history.replaceState(null, '', redirectUri); // Clean URL
-      
-         loadSpotifySDKAndInit();
-      
-        } catch (e) {
-         stateInfo.textContent = 'Token exchange failed. See console.';
-         console.error(e);
-        }
-       } else {
-        // Load stored tokens if no auth code in URL
-        const storedToken = localStorage.getItem('spotify_access_token');
-        const exp = parseInt(localStorage.getItem('spotify_expires_at') || '0', 10);
-        const rToken = localStorage.getItem('spotify_refresh_token');
-      
-        if (storedToken && exp && Date.now() < exp) {
-         ACCESS_TOKEN = storedToken;
-         EXPIRES_AT = exp;
-         REFRESH_TOKEN = rToken;
-         stateInfo.textContent = 'Using stored access token.';
-         loadSpotifySDKAndInit();
-        } else if (rToken && storedCid) {
-         // Token expired, but we have a refresh token
-         stateInfo.textContent = 'Token expired. Attempting to refresh...';
-         try {
-          const tokenData = await refreshToken(storedCid, rToken);
-      
-          ACCESS_TOKEN = tokenData.access_token;
-          const expires_in = parseInt(tokenData.expires_in || 3600, 10);
-          EXPIRES_AT = Date.now() + expires_in * 1000;
-          // Refresh token may or may not be sent back. If it is, store it.
-          if(tokenData.refresh_token) REFRESH_TOKEN = tokenData.refresh_token; 
-      
-          localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
-          localStorage.setItem('spotify_expires_at', EXPIRES_AT);
-          if(REFRESH_TOKEN) localStorage.setItem('spotify_refresh_token', REFRESH_TOKEN);
-          
-          stateInfo.textContent = 'Token refreshed successfully.';
-          loadSpotifySDKAndInit();
-         } catch (e) {
-          stateInfo.textContent = 'Token refresh failed. Please log in.';
-          console.error(e);
-         }
+        console.log("Initializing Spotify auth...");
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const authCode = urlParams.get("code");
+        const storedCid = localStorage.getItem("spotify_client_id");
+
+        if (authCode && storedCid) {
+          const codeVerifier = localStorage.getItem("code_verifier");
+          if (!codeVerifier) {
+            stateInfo.textContent = "Auth failed: Missing code verifier.";
+            history.replaceState(null, "", redirectUri);
+            return;
+          }
+
+          stateInfo.textContent = "Exchanging authorization code for tokens...";
+          try {
+            const tokenData = await exchangeCodeForToken(
+              storedCid,
+              authCode,
+              codeVerifier
+            );
+
+            // Store tokens
+            ACCESS_TOKEN = tokenData.access_token;
+            REFRESH_TOKEN = tokenData.refresh_token;
+            const expires_in = parseInt(tokenData.expires_in || 3600, 10);
+            EXPIRES_AT = Date.now() + expires_in * 1000;
+
+            localStorage.setItem("spotify_access_token", ACCESS_TOKEN);
+            localStorage.setItem("spotify_expires_at", EXPIRES_AT);
+            if (REFRESH_TOKEN)
+              localStorage.setItem("spotify_refresh_token", REFRESH_TOKEN);
+            localStorage.removeItem("code_verifier"); // Verifier is single-use
+
+            stateInfo.textContent = "Logged in successfully via PKCE.";
+            history.replaceState(null, "", redirectUri); // Clean URL
+
+            loadSpotifySDKAndInit();
+          } catch (e) {
+            stateInfo.textContent = "Token exchange failed. See console.";
+            console.error(e);
+          }
         } else {
-         stateInfo.textContent = 'Not logged in (no valid token).';
+          // Load stored tokens if no auth code in URL
+          const storedToken = localStorage.getItem("spotify_access_token");
+          const exp = parseInt(
+            localStorage.getItem("spotify_expires_at") || "0",
+            10
+          );
+          const rToken = localStorage.getItem("spotify_refresh_token");
+
+          if (storedToken && exp && Date.now() < exp) {
+            ACCESS_TOKEN = storedToken;
+            EXPIRES_AT = exp;
+            REFRESH_TOKEN = rToken;
+            stateInfo.textContent = "Using stored access token.";
+            loadSpotifySDKAndInit();
+          } else if (rToken && storedCid) {
+            // Token expired, but we have a refresh token
+            stateInfo.textContent = "Token expired. Attempting to refresh...";
+            try {
+              const tokenData = await refreshToken(storedCid, rToken);
+
+              ACCESS_TOKEN = tokenData.access_token;
+              const expires_in = parseInt(tokenData.expires_in || 3600, 10);
+              EXPIRES_AT = Date.now() + expires_in * 1000;
+              // Refresh token may or may not be sent back. If it is, store it.
+              if (tokenData.refresh_token)
+                REFRESH_TOKEN = tokenData.refresh_token;
+
+              localStorage.setItem("spotify_access_token", ACCESS_TOKEN);
+              localStorage.setItem("spotify_expires_at", EXPIRES_AT);
+              if (REFRESH_TOKEN)
+                localStorage.setItem("spotify_refresh_token", REFRESH_TOKEN);
+
+              stateInfo.textContent = "Token refreshed successfully.";
+              loadSpotifySDKAndInit();
+            } catch (e) {
+              stateInfo.textContent = "Token refresh failed. Please log in.";
+              console.error(e);
+            }
+          } else {
+            stateInfo.textContent = "Not logged in (no valid token).";
+          }
         }
-       }
-       
-       if(storedCid) CLIENT_ID_INPUT.value = storedCid;
+
+        if (storedCid) CLIENT_ID_INPUT.value = storedCid;
       }
-      
-      
+
       // Save client id when changed (convenience)
-      CLIENT_ID_INPUT.addEventListener('change', ()=> localStorage.setItem('spotify_client_id', CLIENT_ID_INPUT.value.trim()));
-      
+      CLIENT_ID_INPUT.addEventListener("change", () =>
+        localStorage.setItem("spotify_client_id", CLIENT_ID_INPUT.value.trim())
+      );
+
       // load SDK script then init player when we have token
-      function loadSpotifySDKAndInit(){
-       if(!ACCESS_TOKEN) return;
-       // load SDK if needed
-       if(!window.Spotify){
-        const tag = document.createElement('script');
-        tag.src = "https://sdk.scdn.co/spotify-player.js";
-        document.head.appendChild(tag);
-       }
-       window.onSpotifyWebPlaybackSDKReady = () => { initializePlayer(); };
-       // attempt to initialize immediately if SDK already present
-       if(window.Spotify && !player) initializePlayer();
-      }
-      
-      async function initializePlayer(){
-       if(!ACCESS_TOKEN) return;
-       if(player) return;
-      
-       // Check if token is near expiration and try to refresh
-       const THRESHOLD = 60000; // 60 seconds
-       if (Date.now() + THRESHOLD > EXPIRES_AT && REFRESH_TOKEN && localStorage.getItem('spotify_client_id')) {
-        console.log('Token close to expiry, attempting refresh before initializing player.');
-        try {
-         const clientId = localStorage.getItem('spotify_client_id');
-         const tokenData = await refreshToken(clientId, REFRESH_TOKEN);
-         ACCESS_TOKEN = tokenData.access_token;
-         const expires_in = parseInt(tokenData.expires_in || 3600, 10);
-         EXPIRES_AT = Date.now() + expires_in * 1000;
-         if(tokenData.refresh_token) REFRESH_TOKEN = tokenData.refresh_token; 
-         localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
-         localStorage.setItem('spotify_expires_at', EXPIRES_AT);
-         if(REFRESH_TOKEN) localStorage.setItem('spotify_refresh_token', REFRESH_TOKEN);
-         stateInfo.textContent = 'Token refreshed. Initializing player.';
-        } catch (e) {
-         console.error('Failed to refresh token during player init. Player may fail.');
-         stateInfo.textContent = 'Refresh failed. Player may fail: ' + e.message;
+      function loadSpotifySDKAndInit() {
+        if (!ACCESS_TOKEN) return;
+        // load SDK if needed
+        if (!window.Spotify) {
+          const tag = document.createElement("script");
+          tag.src = "https://sdk.scdn.co/spotify-player.js";
+          document.head.appendChild(tag);
         }
-       }
-      
-       player = new Spotify.Player({
-        name: 'WinWhileTheyreSinging — Host',
-        getOAuthToken: cb => { cb(ACCESS_TOKEN); },
-        volume: 0.8
-       });
-      
-       // ready
-       player.addListener('ready', ({ device_id }) => {
-        deviceId = device_id;
-        stateInfo.textContent = 'Player ready — device_id: ' + device_id;
-       });
-      
-       player.addListener('not_ready', ({ device_id }) => {
-        console.warn('Device went offline', device_id);
-        stateInfo.textContent = 'Player went offline';
-       });
-      
-       player.addListener('initialization_error', ({ message }) => { console.error(message); stateInfo.textContent = 'Init error: ' + message; });
-       player.addListener('authentication_error', ({ message }) => { console.error(message); stateInfo.textContent = 'Auth error: ' + message; });
-       player.addListener('player_state_changed', (state) => { /* console.log('player_state_changed', state); */ });
-      
-       await player.connect();
+        window.onSpotifyWebPlaybackSDKReady = () => {
+          initializePlayer();
+        };
+        // attempt to initialize immediately if SDK already present
+        if (window.Spotify && !player) initializePlayer();
       }
-      
+
+      async function initializePlayer() {
+        if (!ACCESS_TOKEN) return;
+        if (player) return;
+
+        // Check if token is near expiration and try to refresh
+        const THRESHOLD = 60000; // 60 seconds
+        if (
+          Date.now() + THRESHOLD > EXPIRES_AT &&
+          REFRESH_TOKEN &&
+          localStorage.getItem("spotify_client_id")
+        ) {
+          console.log(
+            "Token close to expiry, attempting refresh before initializing player."
+          );
+          try {
+            const clientId = localStorage.getItem("spotify_client_id");
+            const tokenData = await refreshToken(clientId, REFRESH_TOKEN);
+            ACCESS_TOKEN = tokenData.access_token;
+            const expires_in = parseInt(tokenData.expires_in || 3600, 10);
+            EXPIRES_AT = Date.now() + expires_in * 1000;
+            if (tokenData.refresh_token)
+              REFRESH_TOKEN = tokenData.refresh_token;
+            localStorage.setItem("spotify_access_token", ACCESS_TOKEN);
+            localStorage.setItem("spotify_expires_at", EXPIRES_AT);
+            if (REFRESH_TOKEN)
+              localStorage.setItem("spotify_refresh_token", REFRESH_TOKEN);
+            stateInfo.textContent = "Token refreshed. Initializing player.";
+          } catch (e) {
+            console.error(
+              "Failed to refresh token during player init. Player may fail."
+            );
+            stateInfo.textContent =
+              "Refresh failed. Player may fail: " + e.message;
+          }
+        }
+
+        player = new Spotify.Player({
+          name: "WinWhileTheyreSinging — Host",
+          getOAuthToken: (cb) => {
+            cb(ACCESS_TOKEN);
+          },
+          volume: 0.8,
+        });
+
+        // ready
+        player.addListener("ready", ({ device_id }) => {
+          deviceId = device_id;
+          stateInfo.textContent = "Player ready — device_id: " + device_id;
+        });
+
+        player.addListener("not_ready", ({ device_id }) => {
+          console.warn("Device went offline", device_id);
+          stateInfo.textContent = "Player went offline";
+        });
+
+        player.addListener("initialization_error", ({ message }) => {
+          console.error(message);
+          stateInfo.textContent = "Init error: " + message;
+        });
+        player.addListener("authentication_error", ({ message }) => {
+          console.error(message);
+          stateInfo.textContent = "Auth error: " + message;
+        });
+        player.addListener("player_state_changed", (state) => {
+          /* console.log('player_state_changed', state); */
+        });
+
+        await player.connect();
+      }
+
       // helper to call Spotify Web API endpoints
       async function apiFetch(path, opts = {}) {
-       if(!ACCESS_TOKEN) throw new Error('No access token');
-       // Simple check for expiration, though the player uses getOAuthToken.
-       // This ensures API calls also use a valid token.
-       if (Date.now() > EXPIRES_AT - 60000 && REFRESH_TOKEN) {
-        console.warn('API call triggering token refresh.');
-        await initFromCallback(); // Use the existing refresh logic
-       }
-      
-       const res = await fetch(API_BASE_URL + path, {
-        headers: {
-         Authorization: 'Bearer ' + ACCESS_TOKEN,
-         'Content-Type': 'application/json'
-        },
-        ...opts
-       });
-       if(!res.ok){
-        const text = await res.text();
-        throw new Error('Spotify API ' + res.status + ' ' + text);
-       }
-       return res.json().catch(()=>null);
-      }
-      
-      // load track (extract track URI)
-      function extractUriOrUriFromUrl(text){
-       if(!text) return null;
-       // If it's spotify:track:... return as-is
-       if(text.startsWith('spotify:')) return text;
-       try{
-        const u = new URL(text);
-        // https://open.spotify.com/track/{id}
-        if(u.hostname.includes('open.spotify.com')){
-         const parts = u.pathname.split('/');
-         const type = parts[1];
-         const id = parts[2];
-         if(type && id) return `spotify:${type}:${id.split('?')[0]}`;
+        if (!ACCESS_TOKEN) throw new Error("No access token");
+        // Simple check for expiration, though the player uses getOAuthToken.
+        // This ensures API calls also use a valid token.
+        if (Date.now() > EXPIRES_AT - 60000 && REFRESH_TOKEN) {
+          console.warn("API call triggering token refresh.");
+          await initFromCallback(); // Use the existing refresh logic
         }
-       }catch(e){}
-       // fallback: assume user supplied spotify:track:id
-       return text;
+
+        const res = await fetch(API_BASE_URL + path, {
+          headers: {
+            Authorization: "Bearer " + ACCESS_TOKEN,
+            "Content-Type": "application/json",
+          },
+          ...opts,
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error("Spotify API " + res.status + " " + text);
+        }
+        return res.json().catch(() => null);
       }
-      
+
+      // load track (extract track URI)
+      function extractUriOrUriFromUrl(text) {
+        if (!text) return null;
+        // If it's spotify:track:... return as-is
+        if (text.startsWith("spotify:")) return text;
+        try {
+          const u = new URL(text);
+          // https://open.spotify.com/track/{id}
+          if (u.hostname.includes("open.spotify.com")) {
+            const parts = u.pathname.split("/");
+            const type = parts[1];
+            const id = parts[2];
+            if (type && id) return `spotify:${type}:${id.split("?")[0]}`;
+          }
+        } catch (e) {}
+        // fallback: assume user supplied spotify:track:id
+        return text;
+      }
+
       let loadedTrackUri = null;
       loadTrackBtn.onclick = () => {
-       const val = trackInput.value.trim();
-       const uri = extractUriOrUriFromUrl(val);
-       if(!uri) return alert('Paste a Spotify track URL or URI');
-       loadedTrackUri = uri;
-       stateInfo.textContent = 'Loaded ' + uri;
+        const val = trackInput.value.trim();
+        const uri = extractUriOrUriFromUrl(val);
+        if (!uri) return alert("Paste a Spotify track URL or URI");
+        loadedTrackUri = uri;
+        stateInfo.textContent = "Loaded " + uri;
       };
-      
+
       // play on our device
-      async function playOnDevice(uri, position_ms=0){
-       if(!ACCESS_TOKEN) return alert('Log in first');
-       if(!deviceId) {
-        alert('Player not ready yet. Make sure the page prompted to start the Spotify player and you have Premium.');
-        return;
-       }
-       const body = JSON.stringify({ uris: [uri.replace('spotify:track:','spotify:track:')], position_ms, offset: { position: 0 } });
-       // Use play endpoint and specify device_id query
-       const url = `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`;
-       const res = await fetch(url, {
-        method: 'PUT',
-        headers: { Authorization: 'Bearer ' + ACCESS_TOKEN, 'Content-Type': 'application/json' },
-        body
-       });
-       if(res.status === 204 || res.status === 202) return true;
-       const txt = await res.text();
-       throw new Error('Play failed: ' + res.status + ' ' + txt);
+      async function playOnDevice(uri, position_ms = 0) {
+        if (!ACCESS_TOKEN) return alert("Log in first");
+        if (!deviceId) {
+          alert(
+            "Player not ready yet. Make sure the page prompted to start the Spotify player and you have Premium."
+          );
+          return;
+        }
+        const body = JSON.stringify({
+          uris: [uri.replace("spotify:track:", "spotify:track:")],
+          position_ms,
+          offset: { position: 0 },
+        });
+        // Use play endpoint and specify device_id query
+        const url = `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`;
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: {
+            Authorization: "Bearer " + ACCESS_TOKEN,
+            "Content-Type": "application/json",
+          },
+          body,
+        });
+        if (res.status === 204 || res.status === 202) return true;
+        const txt = await res.text();
+        throw new Error("Play failed: " + res.status + " " + txt);
       }
-      
+
       playBtn.onclick = async () => {
-       if(!loadedTrackUri) return alert('Load a track first');
-       try{
-        await playOnDevice(loadedTrackUri, 0);
-        stateInfo.textContent = 'Playing on host device';
-       }catch(e){ alert('Play error: ' + e.message); console.error(e); }
+        if (!loadedTrackUri) return alert("Load a track first");
+        try {
+          await playOnDevice(loadedTrackUri, 0);
+          stateInfo.textContent = "Playing on host device";
+        } catch (e) {
+          alert("Play error: " + e.message);
+          console.error(e);
+        }
       };
       pauseBtn.onclick = async () => {
-       if(!ACCESS_TOKEN || !deviceId) return;
-       try{
-        await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + ACCESS_TOKEN }});
-        stateInfo.textContent = 'Paused';
-       }catch(e){ alert('Pause failed: ' + e); }
+        if (!ACCESS_TOKEN || !deviceId) return;
+        try {
+          await fetch(
+            `https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`,
+            {
+              method: "PUT",
+              headers: { Authorization: "Bearer " + ACCESS_TOKEN },
+            }
+          );
+          stateInfo.textContent = "Paused";
+        } catch (e) {
+          alert("Pause failed: " + e);
+        }
       };
       seekStartBtn.onclick = async () => {
-       if(!ACCESS_TOKEN || !deviceId) return;
-       try{
-        await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=0&device_id=${deviceId}`, { method: 'PUT', headers: { Authorization: 'Bearer ' + ACCESS_TOKEN }});
-        stateInfo.textContent = 'Seeked to start';
-       }catch(e){ alert('Seek failed: ' + e); }
+        if (!ACCESS_TOKEN || !deviceId) return;
+        try {
+          await fetch(
+            `https://api.spotify.com/v1/me/player/seek?position_ms=0&device_id=${deviceId}`,
+            {
+              method: "PUT",
+              headers: { Authorization: "Bearer " + ACCESS_TOKEN },
+            }
+          );
+          stateInfo.textContent = "Seeked to start";
+        } catch (e) {
+          alert("Seek failed: " + e);
+        }
       };
-      
+
       // Start round: clears buzzes, plays and enables buzz button
       startRoundBtn.onclick = async () => {
-       if(!loadedTrackUri) return alert('Load a track first');
-       buzzes = [];
-       renderBuzzList();
-       progressWrap.style.display = 'block';
-       // start playback at 0
-       try{
-        await playOnDevice(loadedTrackUri, 0);
-        roundActive = true;
-        stateInfo.textContent = 'Round started — buzzes enabled';
-        // start progress loop (no reveal during recording)
-        startRevealLoop(false);
-       }catch(e){ alert('Could not start round: ' + e.message); console.error(e); }
+        if (!loadedTrackUri) return alert("Load a track first");
+        buzzes = [];
+        renderBuzzList();
+        progressWrap.style.display = "block";
+        // start playback at 0
+        try {
+          await playOnDevice(loadedTrackUri, 0);
+          roundActive = true;
+          stateInfo.textContent = "Round started — buzzes enabled";
+          // start progress loop (no reveal during recording)
+          startRevealLoop(false);
+        } catch (e) {
+          alert("Could not start round: " + e.message);
+          console.error(e);
+        }
       };
-      
+
       // Buzz: record current playback position via player.getCurrentState()
       buzzBtn.onclick = async () => {
-       if(!roundActive) return alert('Round not active');
-       if(!player) return alert('Player not initialized yet');
-       const name = prompt('Who buzzed? (type player name)');
-       if(!name) return;
-       const state = await player.getCurrentState();
-       if(!state) return alert('Could not read player state (try interacting with the player first)');
-       const pos = state.position; // ms
-       buzzes.push({ name: name.trim(), time_ms: Math.max(0, Math.floor(pos)) });
-       renderBuzzList();
+        if (!roundActive) return alert("Round not active");
+        if (!player) return alert("Player not initialized yet");
+        const name = prompt("Who buzzed? (type player name)");
+        if (!name) return;
+        const state = await player.getCurrentState();
+        if (!state)
+          return alert(
+            "Could not read player state (try interacting with the player first)"
+          );
+        const pos = state.position; // ms
+        buzzes.push({
+          name: name.trim(),
+          time_ms: Math.max(0, Math.floor(pos)),
+        });
+        renderBuzzList();
       };
-      
+
       // Replay + Reveal: seek to 0, show dim markers, and reveal/pulse them when hit
       replayBtn.onclick = async () => {
-       if(buzzes.length === 0) return alert('No buzzes recorded');
-       if(!deviceId) return alert('Device not ready');
-       
-       roundActive = false; // Disable buzzing during replay
+        if (buzzes.length === 0) return alert("No buzzes recorded");
+        if (!deviceId) return alert("Device not ready");
 
-       // --- CRITICAL CHANGE: Seek to start and play FIRST ---
-       try{
-        // A. Seek to start and play
-        await playOnDevice(loadedTrackUri, 0);
-        stateInfo.textContent = 'Replaying for reveal...';
-       }catch(e){ 
-        alert('Replay play error: ' + e.message); 
-        return; 
-       }
-       // --------------------------------------------------------
+        roundActive = false; // Disable buzzing during replay
 
-       // 1. Clear and render dim markers
-       markers.innerHTML = '';
-       bar.style.width = '0%';
-       
-       const state = await player.getCurrentState();
-       
-       // Check state again now that we've interacted with the player
-       if(!state || !state.track_window || state.track_window.current_track == null){
-        return alert('Could not get current track info after seek.');
-       }
-       const duration = state.duration; // ms
-       
-       // Sort buzzes to ensure we process them in time order
-       buzzes.sort((a, b) => a.time_ms - b.time_ms);
-       
-       buzzes.forEach((b) => {
-        const el = document.createElement('div');
-        el.className = 'marker'; // Start dim/grey
-        const pct = duration ? (b.time_ms / duration) * 100 : 0;
-        el.style.left = pct + '%';
-        el.dataset.time = b.time_ms;
-        // Keep track of the reveal status on the element itself
-        el.dataset.revealed = 'false'; 
-        el.innerHTML = `<div class="label">${escapeHtml(b.name)}<br>${(b.time_ms/1000).toFixed(2)}s</div>`;
-        markers.appendChild(el);
-       });
-       
-       // 2. Start the loop that handles progress and revelation
-       startRevealLoop(true);
+        // CRITICAL CHANGE: Seek to start and play FIRST
+        try {
+          // A. Seek to start and play
+          await playOnDevice(loadedTrackUri, 0);
+          stateInfo.textContent = "Replaying for reveal...";
+        } catch (e) {
+          alert("Replay play error: " + e.message);
+          return;
+        }
+        // --------------------------------------------------------
+
+        // 1. Clear and render dim markers
+        markers.innerHTML = "";
+        bar.style.width = "0%";
+
+        const state = await player.getCurrentState();
+
+        // Check state again now that we've interacted with the player
+        if (
+          !state ||
+          !state.track_window ||
+          state.track_window.current_track == null
+        ) {
+          return alert("Could not get current track info after seek.");
+        }
+        const duration = state.duration; // ms
+
+        // Sort buzzes to ensure we process them in time order
+        buzzes.sort((a, b) => a.time_ms - b.time_ms);
+
+        // --- LABEL STAGGERING LOGIC START ---
+        const labelStack = []; // Stores {left_pct, top_px} of previously placed labels
+        const PADDING_PCT = 3.5; // Horizontal space buffer (approx. one short name width)
+        const STACK_HEIGHT = 16; // Vertical adjustment for each stack level (pixels)
+        // --- LABEL STAGGERING LOGIC END ---
+
+        buzzes.forEach((b) => {
+          const el = document.createElement("div");
+          el.className = "marker"; // Start dim/grey
+          const pct = duration ? (b.time_ms / duration) * 100 : 0;
+          el.style.left = pct + "%";
+          el.dataset.time = b.time_ms;
+          el.dataset.revealed = "false";
+
+          // --- LABEL STAGGERING IMPLEMENTATION ---
+          let verticalLevel = 0;
+          const currentLeft = pct;
+
+          // Check for overlaps with already placed labels
+          for (const stack of labelStack) {
+            const min = stack.left_pct - PADDING_PCT;
+            const max = stack.left_pct + PADDING_PCT;
+
+            // If the current label is within the horizontal range of a previous label,
+            // we need to push it up a level.
+            if (currentLeft >= min && currentLeft <= max) {
+              verticalLevel = Math.max(verticalLevel, stack.level + 1);
+            }
+          }
+
+          // Calculate the new 'top' position based on the required vertical level
+          // (Initial -38px) - (Level * Stack Adjustment)
+          const adjustedTop = -38 - verticalLevel * STACK_HEIGHT;
+
+          // Store this label's position for future overlap checks
+          labelStack.push({ left_pct: currentLeft, level: verticalLevel });
+
+          // Apply the label with the adjusted top position
+          el.innerHTML = `<div class="label" style="top: ${adjustedTop}px;">${escapeHtml(
+            b.name
+          )}<br>${(b.time_ms / 1000).toFixed(2)}s</div>`;
+          // --- END LABEL STAGGERING IMPLEMENTATION ---
+
+          markers.appendChild(el);
+        });
+
+        // 2. Start the loop that handles progress and revelation
+        startRevealLoop(true);
       };
-      
+
       // Reset
       resetBtn.onclick = () => {
-       buzzes = [];
-       markers.innerHTML = '';
-       bar.style.width = '0%';
-       progressWrap.style.display = 'none';
-       roundActive = false;
-       renderBuzzList();
-       stateInfo.textContent = 'Buzzes reset';
+        buzzes = [];
+        markers.innerHTML = "";
+        bar.style.width = "0%";
+        progressWrap.style.display = "none";
+        roundActive = false;
+        renderBuzzList();
+        stateInfo.textContent = "Buzzes reset";
       };
-      
-      // render buzz list
-      function renderBuzzList(){
-       buzzListEl.innerHTML = '';
-       buzzes.forEach(b => {
-        const div = document.createElement('div');
-        div.className = 'buzzItem';
-        div.innerHTML = `<div>${escapeHtml(b.name)}</div><div>${(b.time_ms/1000).toFixed(2)} s</div>`;
-        buzzListEl.appendChild(div);
-       });
-      }
-      
-      // reveal loop: polls player.getCurrentState() to update progress bar and optionally reveal markers
-      async function startRevealLoop(revealMarkers=false){
-       if(revealRAF) cancelAnimationFrame(revealRAF);
-       progressWrap.style.display = 'block';
-       
-       async function tick(){
-        if(!player) { 
-         revealRAF = requestAnimationFrame(tick); 
-         return; 
-        }
-        const state = await player.getCurrentState();
-        if(!state){
-         revealRAF = requestAnimationFrame(tick);
-         return;
-        }
-        
-        const pos = state.position; // ms
-        const dur = state.duration || 1;
-        const pct = Math.min(100, (pos / dur) * 100);
-        bar.style.width = pct + '%';
-        
-        if(revealMarkers){
-         const kids = Array.from(markers.children);
-         
-         kids.forEach(k => {
-          const tt = parseInt(k.dataset.time || '0', 10);
-          const revealed = k.dataset.revealed === 'true';
 
-          // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
-          if(!revealed && pos >= tt){
-           // --- FIX APPLIED HERE ---
-           // 1. Remove the active class (to restart the animation if needed)
-           k.classList.remove('active');
-           
-           // 2. Force browser reflow (a tiny performance cost for a visual guarantee)
-           // This ensures the browser recognizes the element is currently in the "dim" state.
-           void k.offsetHeight; 
-           
-           // 3. Apply the active class to trigger the animation
-           k.classList.add('active'); // Apply bright color and pulse
-           k.dataset.revealed = 'true'; // Mark as revealed
-          }
-         });
-        }
-        
-        // continue loop while playing
-        if(!state.paused){
-         revealRAF = requestAnimationFrame(tick);
-        } else {
-         // if paused, keep polling once per 250ms to detect resumed playback
-         setTimeout(()=>{ revealRAF = requestAnimationFrame(tick); }, 250);
-        }
-       }
-       tick();
+      // render buzz list
+      function renderBuzzList() {
+        buzzListEl.innerHTML = "";
+        buzzes.forEach((b) => {
+          const div = document.createElement("div");
+          div.className = "buzzItem";
+          div.innerHTML = `<div>${escapeHtml(b.name)}</div><div>${(
+            b.time_ms / 1000
+          ).toFixed(2)} s</div>`;
+          buzzListEl.appendChild(div);
+        });
       }
-      
+
+      // reveal loop: polls player.getCurrentState() to update progress bar and optionally reveal markers
+      async function startRevealLoop(revealMarkers = false) {
+        if (revealRAF) cancelAnimationFrame(revealRAF);
+        progressWrap.style.display = "block";
+
+        async function tick() {
+          if (!player) {
+            revealRAF = requestAnimationFrame(tick);
+            return;
+          }
+          const state = await player.getCurrentState();
+          if (!state) {
+            revealRAF = requestAnimationFrame(tick);
+            return;
+          }
+
+          const pos = state.position; // ms
+          const dur = state.duration || 1;
+          const pct = Math.min(100, (pos / dur) * 100);
+          bar.style.width = pct + "%";
+
+          if (revealMarkers) {
+            const kids = Array.from(markers.children);
+
+            kids.forEach((k) => {
+              const tt = parseInt(k.dataset.time || "0", 10);
+              const revealed = k.dataset.revealed === "true";
+
+              // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
+              if (!revealed && pos >= tt) {
+                // --- FIX APPLIED HERE ---
+                // 1. Remove the active class (to restart the animation if needed)
+                k.classList.remove("active");
+
+                // 2. Force browser reflow (a tiny performance cost for a visual guarantee)
+                // This ensures the browser recognizes the element is currently in the "dim" state.
+                void k.offsetHeight;
+
+                // 3. Apply the active class to trigger the animation
+                k.classList.add("active"); // Apply bright color and pulse
+                k.dataset.revealed = "true"; // Mark as revealed
+              }
+            });
+          }
+
+          // continue loop while playing
+          if (!state.paused) {
+            revealRAF = requestAnimationFrame(tick);
+          } else {
+            // if paused, keep polling once per 250ms to detect resumed playback
+            setTimeout(() => {
+              revealRAF = requestAnimationFrame(tick);
+            }, 250);
+          }
+        }
+        tick();
+      }
+
       // small helper
-      function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":''}[c])); }
-      
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&", "<": "<", ">": ">", '"': '"', "'": "" }[c])
+        );
+      }
+
       // Kick off initialization
-      window.addEventListener('load', initFromCallback);
-      
-      
+      window.addEventListener("load", initFromCallback);
+
       // keyboard mapping: space for buzz
-      window.addEventListener('keydown', (e) => {
-       if(e.code === 'Space'){
-        e.preventDefault();
-        buzzBtn.click();
-       }
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          e.preventDefault();
+          buzzBtn.click();
+        }
       });
-      </script>
+    </script>
   </body>
 </html>

@@ -856,23 +856,47 @@
         markerLabels.innerHTML = "";
         bar.style.width = "0%";
 
-        const state = await player.getCurrentState();
+        // --- DURATION CHECK AND RETRY FOR RELIABILITY ---
+        let state = null;
+        let duration = 0;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 5;
 
-        if (
-          !state ||
-          !state.track_window ||
-          state.track_window.current_track == null
-        ) {
-          return alert("Could not get current track info after seek.");
+        while (attempts < MAX_ATTEMPTS) {
+          // Wait briefly to allow Spotify to load track metadata
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          state = await player.getCurrentState();
+
+          if (state && state.duration && state.duration > 0) {
+            duration = state.duration;
+            break; // Success! Duration is available.
+          } else if (
+            state &&
+            state.track_window &&
+            state.track_window.current_track &&
+            state.track_window.current_track.duration_ms > 0
+          ) {
+            duration = state.track_window.current_track.duration_ms;
+            break; // Success! Duration found in the window object.
+          }
+
+          attempts++;
         }
-        const duration = state.duration; // ms
+
+        if (duration === 0) {
+          return alert(
+            "Could not get track duration for replay. Please try again."
+          );
+        }
+        // --- END DURATION CHECK ---
 
         // --- ZOOM FACTOR IMPLEMENTATION ---
         const ZOOM_FACTOR = 0.25;
         const MAX_DURATION_MS = duration * ZOOM_FACTOR;
         // --- END ZOOM FACTOR ---
 
-        // Filter out buzzes that occur after the zoom window
+        // Filter buzzes using the reliably fetched duration
         let visibleBuzzes = buzzes.filter((b) => b.time_ms <= MAX_DURATION_MS);
 
         if (visibleBuzzes.length === 0 && buzzes.length > 0) {
@@ -883,7 +907,8 @@
           );
         }
 
-        visibleBuzzes.sort((a, b) => a.time_ms - b.time.ms);
+        // Sort is necessary here
+        visibleBuzzes.sort((a, b) => a.time_ms - b.time_ms);
 
         const LEVEL_1_TOP = 2; // Upper line
         const LEVEL_2_TOP = 18; // Lower line (16px difference)
@@ -916,6 +941,7 @@
           markerLabels.appendChild(labelEl);
         });
 
+        // 2. Start the loop that handles progress and revelation
         // PASS THE MODE FLAG AND THE CALCULATED ZOOM DURATION
         startRevealLoop("reveal", MAX_DURATION_MS);
       };

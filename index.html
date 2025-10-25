@@ -638,14 +638,27 @@
        if(!deviceId) return alert('Device not ready');
        
        roundActive = false; // Disable buzzing during replay
-      
+
+       // --- CRITICAL CHANGE: Seek to start and play FIRST ---
+       try{
+        // A. Seek to start and play
+        await playOnDevice(loadedTrackUri, 0);
+        stateInfo.textContent = 'Replaying for reveal...';
+       }catch(e){ 
+        alert('Replay play error: ' + e.message); 
+        return; 
+       }
+       // --------------------------------------------------------
+
        // 1. Clear and render dim markers
        markers.innerHTML = '';
        bar.style.width = '0%';
        
        const state = await player.getCurrentState();
+       
+       // Check state again now that we've interacted with the player
        if(!state || !state.track_window || state.track_window.current_track == null){
-        return alert('Could not get current track info. Make sure playback is active.');
+        return alert('Could not get current track info after seek.');
        }
        const duration = state.duration; // ms
        
@@ -664,13 +677,7 @@
         markers.appendChild(el);
        });
        
-       // 2. Seek to start and play
-       try{
-        await playOnDevice(loadedTrackUri, 0);
-        stateInfo.textContent = 'Replaying for reveal...';
-       }catch(e){ alert('Replay play error: ' + e.message); return; }
-       
-       // 3. Start the loop that handles progress and revelation
+       // 2. Start the loop that handles progress and revelation
        startRevealLoop(true);
       };
       

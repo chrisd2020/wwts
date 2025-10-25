@@ -67,14 +67,12 @@
         z-index: 1; /* Give the wrapper a base stacking context */
       }
 
-      /* New Label Container - Positioned relative to #progressWrap, above it */
+      /* New Label Container - Positioned above the bar */
       #markerLabels {
         position: absolute;
-        top: -45px; /* Places it visually above the progress bar */
-        left: 0;
-        right: 0;
-        height: 40px;
-        z-index: 30; /* Keep high so it doesn't overlap title/buttons */
+        top: -45px;
+        /* ... other styles ... */
+        z-index: 5; /* Lower the z-index, as it is outside the main bar area */
       }
 
       #bar {
@@ -82,10 +80,8 @@
         left: 0;
         top: 0;
         bottom: 0;
-        background: linear-gradient(90deg, #10b981, #34d399);
-        width: 0%;
-        opacity: 0.9;
-        z-index: 5; /* FIX: Ensure the bar is drawn on top of the background */
+        /* ... other styles ... */
+        z-index: 10; /* FIX: Ensure the bar is drawn on top of the background */
         transition: none;
       }
 
@@ -96,7 +92,7 @@
         right: 0;
         top: 0;
         bottom: 0;
-        z-index: 10; /* FIX: Ensure markers are drawn on top of the bar */
+        z-index: 15; /* FIX: Ensure markers are drawn on top of the bar (15 > 10) */
       }
 
       /* Marker Label (the text) */

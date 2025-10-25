@@ -56,9 +56,12 @@
 
       /* New Label Container: Positioned relative to .wrap */
       #markerLabels {
-        display: block;
-        position: relative;
-        height: 35px;
+        position: absolute; /* Revert to absolute to allow children to stagger */
+        /* Calculate positioning based on your content. Assuming total header height is around 80px */
+        top: 80px;
+        left: 20px;
+        right: 20px;
+        height: 160px; /* Increased height to accommodate 4 staggered rows */
         z-index: 30;
       }
 
@@ -68,11 +71,11 @@
         height: 56px;
         background: #1f2937;
         border-radius: 8px;
-        overflow: hidden; /* FIX: Added back to enable rounded corners */
+        overflow: hidden; /* Kept hidden for rounded corners */
         border: 1px solid rgba(255, 255, 255, 0.1);
         display: none;
-        /* Margin to reserve space for the labels container above it */
-        margin-top: 20px;
+        /* Reduced margin since labels are now absolute and out of flow */
+        margin-top: 5px;
         z-index: 1;
       }
 
@@ -110,7 +113,8 @@
         color: #dff8fb;
         white-space: nowrap;
         text-align: center;
-        z-index: 20; /* Keep z-index for individual labels high */
+        z-index: 20;
+        height: 37px; /* Explicitly setting height for precise staggering */
       }
 
       .marker {

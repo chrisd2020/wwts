@@ -236,7 +236,7 @@
 
     <script>
       // --- PKCE Helper Functions ---
-
+      
       function generateRandomString(length) {
        let text = '';
        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -245,7 +245,7 @@
        }
        return text;
       }
-
+      
       async function generateCodeChallenge(codeVerifier) {
        const data = new TextEncoder().encode(codeVerifier);
        const digest = await window.crypto.subtle.digest('SHA-256', data);
@@ -254,14 +254,14 @@
         .replace(/\//g, '_')
         .replace(/=+$/, '');
       }
-
+      
       // --- Main App Logic ---
-
+      
       const CLIENT_ID_INPUT = document.getElementById('clientId');
       const loginBtn = document.getElementById('loginBtn');
       const logoutBtn = document.getElementById('logoutBtn');
       const redirectShown = document.getElementById('redirectShown');
-
+      
       const scopes = [
        'streaming',
        'user-read-email',
@@ -269,54 +269,54 @@
        'user-modify-playback-state',
        'user-read-playback-state'
       ].join(' ');
-
+      
       // Full URL without hash (used as redirect_uri)
-      const redirectUri = window.location.href.split('#')[0].split('?')[0];
+      const redirectUri = window.location.href.split('#')[0].split('?')[0]; 
       redirectShown.textContent = redirectUri;
-
+      
       const AUTH_URL = 'https://accounts.spotify.com/authorize';
       const TOKEN_URL = 'https://accounts.spotify.com/api/token';
       const API_BASE_URL = 'https://api.spotify.com/v1';
-
+      
       let ACCESS_TOKEN = null;
       let EXPIRES_AT = 0;
       let REFRESH_TOKEN = null;
-
+      
       let player = null;
       let deviceId = null;
-
+      
       const loadTrackBtn = document.getElementById('loadTrack');
       const trackInput = document.getElementById('trackInput');
       const playBtn = document.getElementById('playBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const seekStartBtn = document.getElementById('seekStartBtn');
-
+      
       const startRoundBtn = document.getElementById('startRound');
       const buzzBtn = document.getElementById('buzzBtn');
       const replayBtn = document.getElementById('replayBtn');
       const resetBtn = document.getElementById('resetBtn');
       const buzzListEl = document.getElementById('buzzList');
-
+      
       const progressWrap = document.getElementById('progressWrap');
       const bar = document.getElementById('bar');
       const markers = document.getElementById('markers');
       const stateInfo = document.getElementById('stateInfo');
-
+      
       let buzzes = []; // {name, time_ms}
       let roundActive = false;
       let revealRAF = null;
-
-
+      
+      
       // --- Core PKCE Functions ---
-
+      
       // Step 1: Redirect to Authorization
       async function buildAuthUrl(clientId) {
        const codeVerifier = generateRandomString(128);
        const codeChallenge = await generateCodeChallenge(codeVerifier);
-
+      
        // Store verifier for later exchange
        localStorage.setItem('code_verifier', codeVerifier);
-
+      
        const params = new URLSearchParams({
         client_id: clientId,
         response_type: 'code', // <-- Requesting a code, not a token
@@ -329,7 +329,7 @@
        });
        return AUTH_URL + '?' + params.toString();
       }
-
+      
       // Step 2: Exchange Code for Token
       async function exchangeCodeForToken(clientId, code, codeVerifier) {
        const body = new URLSearchParams({
@@ -339,20 +339,20 @@
         client_id: clientId,
         code_verifier: codeVerifier // PKCE element
        });
-
+      
        const response = await fetch(TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body
        });
-
+      
        if (!response.ok) {
         throw new Error('Token exchange failed: ' + response.status + ' ' + await response.text());
        }
-
+      
        return response.json();
       }
-
+      
       // Step 3: Refresh Token
       async function refreshToken(clientId, storedRefreshToken) {
        const body = new URLSearchParams({
@@ -360,23 +360,23 @@
         refresh_token: storedRefreshToken,
         client_id: clientId // Required for PKCE refresh
        });
-
+      
        const response = await fetch(TOKEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body
        });
-
+      
        if (!response.ok) {
         console.error('Token refresh failed');
         throw new Error('Token refresh failed: ' + response.status);
        }
-
+      
        return response.json();
       }
-
+      
       // --- Initialization and Event Handlers ---
-
+      
       loginBtn.onclick = async () => {
        const clientId = CLIENT_ID_INPUT.value.trim();
        if (!clientId) return alert('Paste your Spotify Client ID first');
@@ -390,7 +390,7 @@
         alert('Could not generate PKCE challenge. Check console.');
        }
       };
-
+      
       logoutBtn.onclick = () => {
        ACCESS_TOKEN = null;
        EXPIRES_AT = 0;
@@ -405,15 +405,15 @@
        // Reload page to clear player
        window.location.reload();
       };
-
+      
       // Handle redirection from Spotify (contains 'code' in query params)
       async function initFromCallback() {
        console.log('Initializing Spotify auth...');
-
+       
        const urlParams = new URLSearchParams(window.location.search);
        const authCode = urlParams.get('code');
        const storedCid = localStorage.getItem('spotify_client_id');
-
+      
        if (authCode && storedCid) {
         const codeVerifier = localStorage.getItem('code_verifier');
         if (!codeVerifier) {
@@ -421,26 +421,27 @@
          history.replaceState(null, '', redirectUri);
          return;
         }
-
+      
         stateInfo.textContent = 'Exchanging authorization code for tokens...';
         try {
          const tokenData = await exchangeCodeForToken(storedCid, authCode, codeVerifier);
-
+         
          // Store tokens
          ACCESS_TOKEN = tokenData.access_token;
          REFRESH_TOKEN = tokenData.refresh_token;
          const expires_in = parseInt(tokenData.expires_in || 3600, 10);
          EXPIRES_AT = Date.now() + expires_in * 1000;
-
+         
          localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
          localStorage.setItem('spotify_expires_at', EXPIRES_AT);
          if(REFRESH_TOKEN) localStorage.setItem('spotify_refresh_token', REFRESH_TOKEN);
          localStorage.removeItem('code_verifier'); // Verifier is single-use
-
+      
          stateInfo.textContent = 'Logged in successfully via PKCE.';
          history.replaceState(null, '', redirectUri); // Clean URL
-
+      
          loadSpotifySDKAndInit();
+      
         } catch (e) {
          stateInfo.textContent = 'Token exchange failed. See console.';
          console.error(e);
@@ -450,7 +451,7 @@
         const storedToken = localStorage.getItem('spotify_access_token');
         const exp = parseInt(localStorage.getItem('spotify_expires_at') || '0', 10);
         const rToken = localStorage.getItem('spotify_refresh_token');
-
+      
         if (storedToken && exp && Date.now() < exp) {
          ACCESS_TOKEN = storedToken;
          EXPIRES_AT = exp;
@@ -462,17 +463,17 @@
          stateInfo.textContent = 'Token expired. Attempting to refresh...';
          try {
           const tokenData = await refreshToken(storedCid, rToken);
-
+      
           ACCESS_TOKEN = tokenData.access_token;
           const expires_in = parseInt(tokenData.expires_in || 3600, 10);
           EXPIRES_AT = Date.now() + expires_in * 1000;
           // Refresh token may or may not be sent back. If it is, store it.
-          if(tokenData.refresh_token) REFRESH_TOKEN = tokenData.refresh_token;
-
+          if(tokenData.refresh_token) REFRESH_TOKEN = tokenData.refresh_token; 
+      
           localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
           localStorage.setItem('spotify_expires_at', EXPIRES_AT);
           if(REFRESH_TOKEN) localStorage.setItem('spotify_refresh_token', REFRESH_TOKEN);
-
+          
           stateInfo.textContent = 'Token refreshed successfully.';
           loadSpotifySDKAndInit();
          } catch (e) {
@@ -483,14 +484,14 @@
          stateInfo.textContent = 'Not logged in (no valid token).';
         }
        }
-
+       
        if(storedCid) CLIENT_ID_INPUT.value = storedCid;
       }
-
-
+      
+      
       // Save client id when changed (convenience)
       CLIENT_ID_INPUT.addEventListener('change', ()=> localStorage.setItem('spotify_client_id', CLIENT_ID_INPUT.value.trim()));
-
+      
       // load SDK script then init player when we have token
       function loadSpotifySDKAndInit(){
        if(!ACCESS_TOKEN) return;
@@ -504,11 +505,11 @@
        // attempt to initialize immediately if SDK already present
        if(window.Spotify && !player) initializePlayer();
       }
-
+      
       async function initializePlayer(){
        if(!ACCESS_TOKEN) return;
        if(player) return;
-
+      
        // Check if token is near expiration and try to refresh
        const THRESHOLD = 60000; // 60 seconds
        if (Date.now() + THRESHOLD > EXPIRES_AT && REFRESH_TOKEN && localStorage.getItem('spotify_client_id')) {
@@ -519,7 +520,7 @@
          ACCESS_TOKEN = tokenData.access_token;
          const expires_in = parseInt(tokenData.expires_in || 3600, 10);
          EXPIRES_AT = Date.now() + expires_in * 1000;
-         if(tokenData.refresh_token) REFRESH_TOKEN = tokenData.refresh_token;
+         if(tokenData.refresh_token) REFRESH_TOKEN = tokenData.refresh_token; 
          localStorage.setItem('spotify_access_token', ACCESS_TOKEN);
          localStorage.setItem('spotify_expires_at', EXPIRES_AT);
          if(REFRESH_TOKEN) localStorage.setItem('spotify_refresh_token', REFRESH_TOKEN);
@@ -529,31 +530,31 @@
          stateInfo.textContent = 'Refresh failed. Player may fail: ' + e.message;
         }
        }
-
+      
        player = new Spotify.Player({
         name: 'WinWhileTheyreSinging — Host',
         getOAuthToken: cb => { cb(ACCESS_TOKEN); },
         volume: 0.8
        });
-
+      
        // ready
        player.addListener('ready', ({ device_id }) => {
         deviceId = device_id;
         stateInfo.textContent = 'Player ready — device_id: ' + device_id;
        });
-
+      
        player.addListener('not_ready', ({ device_id }) => {
         console.warn('Device went offline', device_id);
         stateInfo.textContent = 'Player went offline';
        });
-
+      
        player.addListener('initialization_error', ({ message }) => { console.error(message); stateInfo.textContent = 'Init error: ' + message; });
        player.addListener('authentication_error', ({ message }) => { console.error(message); stateInfo.textContent = 'Auth error: ' + message; });
        player.addListener('player_state_changed', (state) => { /* console.log('player_state_changed', state); */ });
-
+      
        await player.connect();
       }
-
+      
       // helper to call Spotify Web API endpoints
       async function apiFetch(path, opts = {}) {
        if(!ACCESS_TOKEN) throw new Error('No access token');
@@ -563,7 +564,7 @@
         console.warn('API call triggering token refresh.');
         await initFromCallback(); // Use the existing refresh logic
        }
-
+      
        const res = await fetch(API_BASE_URL + path, {
         headers: {
          Authorization: 'Bearer ' + ACCESS_TOKEN,
@@ -577,7 +578,7 @@
        }
        return res.json().catch(()=>null);
       }
-
+      
       // load track (extract track URI)
       function extractUriOrUriFromUrl(text){
        if(!text) return null;
@@ -596,7 +597,7 @@
        // fallback: assume user supplied spotify:track:id
        return text;
       }
-
+      
       let loadedTrackUri = null;
       loadTrackBtn.onclick = () => {
        const val = trackInput.value.trim();
@@ -605,7 +606,7 @@
        loadedTrackUri = uri;
        stateInfo.textContent = 'Loaded ' + uri;
       };
-
+      
       // play on our device
       async function playOnDevice(uri, position_ms=0){
        if(!ACCESS_TOKEN) return alert('Log in first');
@@ -625,7 +626,7 @@
        const txt = await res.text();
        throw new Error('Play failed: ' + res.status + ' ' + txt);
       }
-
+      
       playBtn.onclick = async () => {
        if(!loadedTrackUri) return alert('Load a track first');
        try{
@@ -647,7 +648,7 @@
         stateInfo.textContent = 'Seeked to start';
        }catch(e){ alert('Seek failed: ' + e); }
       };
-
+      
       // Start round: clears buzzes, plays and enables buzz button
       startRoundBtn.onclick = async () => {
        if(!loadedTrackUri) return alert('Load a track first');
@@ -663,7 +664,7 @@
         startRevealLoop(false);
        }catch(e){ alert('Could not start round: ' + e.message); console.error(e); }
       };
-
+      
       // Buzz: record current playback position via player.getCurrentState()
       buzzBtn.onclick = async () => {
        if(!roundActive) return alert('Round not active');
@@ -676,45 +677,49 @@
        buzzes.push({ name: name.trim(), time_ms: Math.max(0, Math.floor(pos)) });
        renderBuzzList();
       };
-
+      
       // Replay + Reveal: seek to 0, show dim markers, and reveal/pulse them when hit
       replayBtn.onclick = async () => {
        if(buzzes.length === 0) return alert('No buzzes recorded');
        if(!deviceId) return alert('Device not ready');
-
+       
        roundActive = false; // Disable buzzing during replay
-
+      
        // 1. Clear and render dim markers
        markers.innerHTML = '';
        bar.style.width = '0%';
-
+       
        const state = await player.getCurrentState();
        if(!state || !state.track_window || state.track_window.current_track == null){
         return alert('Could not get current track info. Make sure playback is active.');
        }
        const duration = state.duration; // ms
-
-       buzzes.forEach((b, idx) => {
+       
+       // Sort buzzes to ensure we process them in time order
+       buzzes.sort((a, b) => a.time_ms - b.time_ms);
+       
+       buzzes.forEach((b) => {
         const el = document.createElement('div');
-        el.className = 'marker'; // Start dim
+        el.className = 'marker'; // Start dim/grey
         const pct = duration ? (b.time_ms / duration) * 100 : 0;
         el.style.left = pct + '%';
         el.dataset.time = b.time_ms;
-        el.dataset.revealed = 'false';
+        // Keep track of the reveal status on the element itself
+        el.dataset.revealed = 'false'; 
         el.innerHTML = `<div class="label">${escapeHtml(b.name)}<br>${(b.time_ms/1000).toFixed(2)}s</div>`;
         markers.appendChild(el);
        });
-
+       
        // 2. Seek to start and play
        try{
         await playOnDevice(loadedTrackUri, 0);
         stateInfo.textContent = 'Replaying for reveal...';
        }catch(e){ alert('Replay play error: ' + e.message); return; }
-
+       
        // 3. Start the loop that handles progress and revelation
        startRevealLoop(true);
       };
-
+      
       // Reset
       resetBtn.onclick = () => {
        buzzes = [];
@@ -725,7 +730,7 @@
        renderBuzzList();
        stateInfo.textContent = 'Buzzes reset';
       };
-
+      
       // render buzz list
       function renderBuzzList(){
        buzzListEl.innerHTML = '';
@@ -736,43 +741,44 @@
         buzzListEl.appendChild(div);
        });
       }
-
+      
       // reveal loop: polls player.getCurrentState() to update progress bar and optionally reveal markers
       async function startRevealLoop(revealMarkers=false){
        if(revealRAF) cancelAnimationFrame(revealRAF);
        progressWrap.style.display = 'block';
-
+       
        async function tick(){
-        if(!player) {
-         revealRAF = requestAnimationFrame(tick);
-         return;
+        if(!player) { 
+         revealRAF = requestAnimationFrame(tick); 
+         return; 
         }
         const state = await player.getCurrentState();
         if(!state){
          revealRAF = requestAnimationFrame(tick);
          return;
         }
-
+        
         const pos = state.position; // ms
         const dur = state.duration || 1;
         const pct = Math.min(100, (pos / dur) * 100);
         bar.style.width = pct + '%';
-
+        
         if(revealMarkers){
          const kids = Array.from(markers.children);
+         
          // Check against all markers
          kids.forEach(k => {
           const tt = parseInt(k.dataset.time || '0', 10);
           const revealed = k.dataset.revealed === 'true';
-
-          // If playback position has passed the buzz time and it hasn't been revealed yet
-          if(!revealed && pos + 100 >= tt){ // 100ms cushion for timing
+      
+          // Trigger reveal only if position has passed the time AND it hasn't been revealed yet
+          if(!revealed && pos >= tt){
            k.classList.add('active'); // Apply bright color and pulse
            k.dataset.revealed = 'true'; // Mark as revealed
           }
          });
         }
-
+        
         // continue loop while playing
         if(!state.paused){
          revealRAF = requestAnimationFrame(tick);
@@ -783,14 +789,14 @@
        }
        tick();
       }
-
+      
       // small helper
       function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":''}[c])); }
-
+      
       // Kick off initialization
       window.addEventListener('load', initFromCallback);
-
-
+      
+      
       // keyboard mapping: space for buzz
       window.addEventListener('keydown', (e) => {
        if(e.code === 'Space'){
@@ -798,6 +804,6 @@
         buzzBtn.click();
        }
       });
-    </script>
+      </script>
   </body>
 </html>

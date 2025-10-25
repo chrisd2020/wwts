@@ -5,140 +5,91 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Win While They're Singing — Spotify Host (PKCE)</title>
     <style>
-      body {
-        font-family: Inter, system-ui, Arial, sans-serif;
-        background: #071020;
-        color: #e6eef6;
-        margin: 0;
-        padding: 20px;
-      }
-      .wrap {
-        max-width: 980px;
-        margin: 0 auto;
-      }
-      h1 {
-        margin: 0 0 8px;
-      }
-      .muted {
-        color: #9aa6b2;
-        font-size: 13px;
-      }
-      input,
-      button,
-      select {
-        padding: 8px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        background: transparent;
-        color: inherit;
-      }
-      button {
-        cursor: pointer;
-        background: linear-gradient(90deg, #06b6d4, #7dd3fc);
-        color: #022;
-        padding: 8px 12px;
-        font-weight: 700;
-      }
-      .controls {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin: 12px 0;
-      }
-      .panel {
-        background: rgba(255, 255, 255, 0.02);
-        padding: 12px;
-        border-radius: 10px;
-        margin-bottom: 12px;
-      }
-
-      /* Progress Bar Styles */
-      #progressWrap {
-        position: relative;
-        height: 56px;
-        background: #1f2937;
-        border-radius: 8px;
-        overflow: hidden;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        display: none;
-      }
-      #bar {
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        background: linear-gradient(90deg, #10b981, #34d399);
-        width: 0%;
+       body{font-family:Inter,system-ui,Arial,sans-serif;background:#071020;color:#e6eef6;margin:0;padding:20px}
+       .wrap{max-width:980px;margin:0 auto}
+       h1{margin:0 0 8px}
+       .muted{color:#9aa6b2;font-size:13px}
+       input,button,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+       button{cursor:pointer;background:linear-gradient(90deg,#06b6d4,#7dd3fc);color:#022;padding:8px 12px;font-weight:700}
+       .controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+       .panel{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;margin-bottom:12px}
+       
+       /* Progress Bar Styles */
+       #progressWrap{
+        position:relative;
+        height:56px;
+        background:#1f2937;
+        border-radius:8px;
+        overflow:hidden;
+        border:1px solid rgba(255,255,255,0.1);
+        display:none
+       }
+       #bar{
+        position:absolute;
+        left:0;
+        top:0;
+        bottom:0;
+        background:linear-gradient(90deg, #10b981, #34d399); 
+        width:0%;
         opacity: 0.9;
-      }
-
-      /* Marker Styles */
-      .markers {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 0;
-        bottom: 0;
-      }
-      .marker {
-        position: absolute;
-        top: 6px;
-        width: 2px;
-        height: 44px;
-        background: #4b5563; /* Dim Grey initial color */
-        opacity: 0.6;
-        transition: all 0.2s ease-out; /* Smooth color/size transition */
-      }
-
-      /* Pulse animation definition */
-      @keyframes pulse {
-        0% {
-          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
-        }
-        70% {
-          box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
-        }
-        100% {
-          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
-        }
-      }
-
-      /* Active marker style - triggered by JS */
-      .marker.active {
-        background: #f59e0b; /* Bright Amber reveal color */
-        width: 4px; /* Make it thicker when hit */
+       }
+       
+       /* Marker Styles */
+       .markers{
+        position:absolute;
+        left:0;
+        right:0;
+        top:0;
+        bottom:0;
+       }
+       .marker{
+        position:absolute;
+        top:0; /* Marker now starts at the top edge of progressWrap */
+        width:2px;
+        height:100%; /* Marker runs the full height of the bar */
+        background:#4b5563; 
+        opacity:0.6; 
+        transition: all 0.2s ease-out;
+        z-index: 10;
+       }
+       
+       /* Pulse animation definition */
+       @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+       }
+       
+       /* Active marker style - triggered by JS */
+       .marker.active {
+        background:#f59e0b;
+        width: 4px; 
         opacity: 1;
-        animation: pulse 0.5s ease-out;
+        animation: pulse 0.5s ease-out; 
         box-shadow: 0 0 8px #f59e0b;
-      }
-
-      .marker .label {
-        position: absolute;
-        top: -20px;
-        left: -6px;
-        background: #042434;
-        padding: 2px 6px;
-        border-radius: 6px;
-        font-size: 12px;
-        color: #dff8fb;
+       }
+      
+       /* --- LABEL CHANGES START HERE --- */
+       .marker .label{
+        position:absolute;
+        top:-32px; /* Position the label above the progressWrap */
+        transform: translateX(-50%); /* Center the label horizontally over the marker */
+        left:0;
+        background:transparent; /* Remove background color */
+        padding:2px 6px;
+        border-radius:6px;
+        font-size:12px;
+        color:#dff8fb; 
         white-space: nowrap;
-      }
-      .buzzList {
-        margin-top: 8px;
-      }
-      .buzzItem {
-        display: flex;
-        justify-content: space-between;
-        padding: 6px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 6px;
-        margin-bottom: 6px;
-      }
-      .note {
-        font-size: 13px;
-        color: #9aa6b2;
-      }
-    </style>
+        text-align: center;
+        z-index: 20; /* Ensure labels are on top of everything */
+       }
+       /* --- LABEL CHANGES END HERE --- */
+       
+       .buzzList{margin-top:8px}
+       .buzzItem{display:flex;justify-content:space-between;padding:6px;background:rgba(255,255,255,0.02);border-radius:6px;margin-bottom:6px}
+       .note{font-size:13px;color:#9aa6b2}
+      </style>
   </head>
   <body>
     <div class="wrap">

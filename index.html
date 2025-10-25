@@ -748,21 +748,72 @@
 
       // Start round: clears buzzes, plays and enables buzz button
       startRoundBtn.onclick = async () => {
-        if (!loadedTrackUri) return alert("Load a track first");
+        if (!loadedTrackUri) return alert("Load a track URI first");
+        if (!deviceId)
+          return alert(
+            "Player not ready. Make sure the SDK initialized and a device ID was obtained."
+          );
+
         buzzes = [];
         renderBuzzList();
+        markers.innerHTML = "";
+        markerLabels.innerHTML = "";
         progressWrap.style.display = "block";
-        // start playback at 0
+        bar.style.width = "0%";
+
+        // Start playback at 0 and check for API errors
         try {
-          await playOnDevice(loadedTrackUri, 0);
-          roundActive = true;
-          stateInfo.textContent = "Round started — buzzes enabled";
-          // start progress loop (no reveal during recording)
-          startRevealLoop(false);
+          const success = await playOnDevice(loadedTrackUri, 0);
+
+          if (!success) {
+            alert("Playback initiation failed (Unknown API error).");
+            stateInfo.textContent = "Round failed to start.";
+            return;
+          }
         } catch (e) {
-          alert("Could not start round: " + e.message);
-          console.error(e);
+          alert(
+            "Could not start round. Check player state and Premium status. Error: " +
+              e.message
+          );
+          console.error("Start Round Error:", e);
+          stateInfo.textContent =
+            "Round failed to start (See console for API error).";
+          return;
         }
+
+        // --- FIX: Wait and check for track duration ---
+        let state = null;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 5;
+
+        while (attempts < MAX_ATTEMPTS) {
+          // Wait briefly to allow Spotify to load track metadata
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          state = await player.getCurrentState();
+
+          if (state && state.duration && state.duration > 0) {
+            break; // Success! Duration is available.
+          }
+          attempts++;
+          if (attempts === MAX_ATTEMPTS) {
+            return alert(
+              "Could not get track duration after multiple attempts. Try reloading or selecting a track."
+            );
+          }
+        }
+
+        const duration = state.duration;
+        // --- END FIX ---
+
+        const ZOOM_FACTOR = 0.25;
+        const MAX_DURATION_MS = duration * ZOOM_FACTOR;
+
+        roundActive = true;
+        stateInfo.textContent = "Round started — buzzes enabled (25% Zoom)";
+
+        // PASS THE CALCULATED ZOOM DURATION TO THE LOOP
+        startRevealLoop(false, MAX_DURATION_MS);
       };
 
       // Buzz: record current playback position via player.getCurrentState()

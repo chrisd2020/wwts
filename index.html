@@ -13,8 +13,26 @@ input,button,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,
 button{cursor:pointer;background:linear-gradient(90deg,#06b6d4,#7dd3fc);color:#022;padding:8px 12px;font-weight:700}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 .panel{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;margin-bottom:12px}
-#progressWrap{position:relative;height:56px;background:#061224;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);display:none}
-#bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(6,182,212,0.15),rgba(29,78,216,0.12));width:0%}
+#progressWrap {
+  position:relative;
+  height:56px;
+  background:#1f2937; /* Darker, more solid background */
+  border-radius:8px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,0.1);
+  display:none
+ }
+
+ #bar{
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  /* Solid, vibrant gradient for high contrast */
+  background:linear-gradient(90deg, #10b981, #34d399); 
+  width:0%;
+  opacity: 0.9; /* Add a slight opacity for visual depth */
+ }
 .markers{position:absolute;left:0;right:0;top:0;bottom:0}
 .marker{position:absolute;top:6px;width:2px;height:44px;background:#ffd54f;opacity:0}
 .marker .label{position:absolute;top:-20px;left:-6px;background:#042434;padding:2px 6px;border-radius:6px;font-size:12px;color:#dff8fb}
